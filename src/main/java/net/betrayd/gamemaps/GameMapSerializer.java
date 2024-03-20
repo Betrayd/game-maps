@@ -1,5 +1,9 @@
 package net.betrayd.gamemaps;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,8 +14,10 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.math.ChunkSectionPos;
@@ -26,6 +32,15 @@ public class GameMapSerializer {
     private static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer
             .createPalettedContainerCodec(Block.STATE_IDS, BlockState.CODEC,
                     PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
+
+    public static void serializeMap(GameMap map, OutputStream out) throws IOException {
+        NbtIo.writeCompressed(serializeMap(map), out);
+    }
+
+    public static GameMap deserializeMap(Registry<Biome> biomeRegistry, InputStream in) throws IOException {
+        NbtElement nbt = NbtIo.readCompressed(in, NbtSizeTracker.ofUnlimitedBytes());
+        return deserializeMap((NbtCompound) nbt, biomeRegistry);
+    }
     
     public static NbtCompound serializeMap(GameMap map) {
         NbtCompound nbt = new NbtCompound();

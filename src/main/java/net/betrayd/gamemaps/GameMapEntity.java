@@ -18,12 +18,16 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
 
     @Nullable
     public static GameMapEntity fromEntity(Entity entity) {
+        return fromEntity(entity.getPos(), entity);
+    }
+
+    public static GameMapEntity fromEntity(Vec3d position, Entity entity) {
         var nbt = new NbtCompound();
         if (!entity.saveNbt(nbt)) return null;
 
         nbt.remove("UUID");;
 
-        return new GameMapEntity(entity.getPos(), nbt);
+        return new GameMapEntity(position, nbt);
     }
 
     public static GameMapEntity fromNbt(NbtCompound nbt) {
@@ -55,6 +59,8 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
         NbtCompound nbt = this.nbt.copy();
 
         nbt.put("Pos", posToList(pos));
+
+        nbt.remove("UUID");
 
         // AbstractDecorationEntity has special position handling with an attachment position.
         if (nbt.contains("TileX", NbtElement.INT_TYPE)) {

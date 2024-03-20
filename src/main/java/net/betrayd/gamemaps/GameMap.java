@@ -110,11 +110,16 @@ public class GameMap {
         putBlockEntity(blockEntity.createNbtWithIdentifyingData());
     }
 
+    public void putBlockEntity(BlockPos pos, BlockEntity blockEntity) {
+        putBlockEntity(pos, blockEntity.createNbtWithIdentifyingData());
+    }
+
     public Collection<GameMapEntity> getEntities() {
         return entities;
     }
 
     public void addEntity(GameMapEntity entity) {
+        if (entity == null) return;
         entities.add(entity);
     }
 

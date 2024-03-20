@@ -1,7 +1,11 @@
 package net.betrayd.gamemaps;
 
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 
@@ -20,6 +24,19 @@ public class GameMapReader {
                 for (int z = minPos.getZ(); z <= maxPos.getZ(); z++) {
                     BlockPos globalPos = new BlockPos(x, y, z);
                     map.setBlock(globalPos.subtract(pos1), world.getBlockState(globalPos));
+
+                    BlockEntity blockEntity = world.getBlockEntity(globalPos);
+                    if (blockEntity != null) {
+                        map.putBlockEntity(globalPos.subtract(pos1), blockEntity);
+                    }
+                }
+            }
+        }
+
+        if (world instanceof ServerWorld serverWorld) {
+            for (Entity ent : serverWorld.iterateEntities()) {
+                if (boxContains(minPos, maxPos, ent.getBlockPos())) {
+                    map.addEntity(GameMapEntity.fromEntity(ent.getPos().subtract(Vec3d.of(pos1)), ent));
                 }
             }
         }
@@ -52,5 +69,11 @@ public class GameMapReader {
 
     private static BlockPos max(BlockPos a, BlockPos b) {
         return max(a, b, BlockPos::new);
+    }
+
+    private static boolean boxContains(BlockPos minPos, BlockPos maxPos, BlockPos pos) {
+        return minPos.getX() <= pos.getX() && pos.getX() <= maxPos.getX()
+            && minPos.getY() <= pos.getY() && pos.getY() <= maxPos.getY()
+            && minPos.getZ() <= pos.getZ() && pos.getZ() <= maxPos.getZ();
     }
 }
