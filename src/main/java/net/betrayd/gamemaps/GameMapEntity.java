@@ -48,7 +48,7 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
     }
 
     /**
-     * Create entity NBT data that can be loaded into the world.
+     * Create entity NBT data with its proper position embedded.
      * @return World-loadable entity NBT.
      */
     public NbtCompound createEntityNbt() {

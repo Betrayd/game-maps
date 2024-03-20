@@ -44,6 +44,10 @@ public class GameMap {
         return chunks.computeIfAbsent(pos, p -> new GameChunk(biomeRegistry));
     }
 
+    public void putChunk(ChunkSectionPos pos, GameChunk chunk) {
+        chunks.put(pos, chunk);
+    }
+
     public BlockState getBlock(int x, int y, int z) {
         ChunkSectionPos chunkPos = getChunkPos(x, y, z);
 
@@ -125,7 +129,7 @@ public class GameMap {
         ChunkSectionPos chunkPos = getChunkPos(x, y, z);
         GameChunk chunk = getChunk(chunkPos);
 
-        if (chunk == null) return biomeRegistry.getEntry(BiomeKeys.THE_VOID).get();
+        if (chunk == null) return biomeRegistry.entryOf(BiomeKeys.THE_VOID);
         return chunk.getBiome(x & 0xF, y & 0xF, z & 0xF);
     }
 

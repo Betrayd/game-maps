@@ -2,6 +2,7 @@ package net.betrayd.gamemaps;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -16,24 +17,36 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
 import net.minecraft.world.chunk.PalettedContainer;
-import net.minecraft.world.chunk.ReadableContainer;
 
 public class GameChunk {
     private final PalettedContainer<BlockState> blockStateContainer;
     private final PalettedContainer<RegistryEntry<Biome>> biomeContainer;
+    private final Registry<Biome> biomeRegistry;
 
     private final Map<BlockPos, NbtCompound> blockEntities = new HashMap<>();
 
-    public GameChunk(PalettedContainer<BlockState> blockStateContainer, PalettedContainer<RegistryEntry<Biome>> biomes) {
-        this.blockStateContainer = blockStateContainer;
-        this.biomeContainer = biomes;
+    public GameChunk(@Nullable PalettedContainer<BlockState> blockStateContainer,
+            @Nullable PalettedContainer<RegistryEntry<Biome>> biomeContainer, Registry<Biome> biomeRegistry) {
+
+        if (blockStateContainer != null) {
+            this.blockStateContainer = blockStateContainer;
+        } else {
+            this.blockStateContainer = new PalettedContainer<>(Block.STATE_IDS, Blocks.AIR.getDefaultState(),
+                    PalettedContainer.PaletteProvider.BLOCK_STATE);
+        }
+
+        if (biomeContainer != null) {
+            this.biomeContainer = biomeContainer;
+        } else {
+            this.biomeContainer = new PalettedContainer<>(biomeRegistry.getIndexedEntries(),
+                    biomeRegistry.entryOf(BiomeKeys.THE_VOID), PalettedContainer.PaletteProvider.BIOME);
+        }
+
+        this.biomeRegistry = biomeRegistry;
     }
 
     public GameChunk(Registry<Biome> biomeRegistry) {
-        this.blockStateContainer = new PalettedContainer<>(Block.STATE_IDS, Blocks.AIR.getDefaultState(),
-                PalettedContainer.PaletteProvider.BLOCK_STATE);
-        this.biomeContainer = new PalettedContainer<>(biomeRegistry.getIndexedEntries(),
-                biomeRegistry.entryOf(BiomeKeys.THE_VOID), PalettedContainer.PaletteProvider.BIOME);
+        this(null, null, biomeRegistry);
     }
 
     public Map<BlockPos, NbtCompound> getBlockEntities() {
@@ -84,6 +97,24 @@ public class GameChunk {
         return blockEntities.get(new BlockPos(x, y, z));
     }
 
+    /**
+     * Serialize all block entities with their correct positions.
+     * @return Stream of serialized block entities.
+     */
+    public Stream<NbtCompound> serializeBlockEntities() {
+        return blockEntities.entrySet().stream().map(e -> {
+            NbtCompound nbt = e.getValue().copy();
+            nbt.putInt("x", e.getKey().getX());
+            nbt.putInt("y", e.getKey().getY());
+            nbt.putInt("z", e.getKey().getZ());
+            return nbt;
+        });
+    }
+
+    public PalettedContainer<BlockState> getBlockStateContainer() {
+        return blockStateContainer;
+    }
+
     public BlockState getBlockState(int x, int y, int z) {
         assertInBounds(x);
         assertInBounds(y);
@@ -100,12 +131,17 @@ public class GameChunk {
         blockStateContainer.set(x, y, z, state);
     }
     
-    public ReadableContainer<RegistryEntry<Biome>> getBiomeContainer() {
+    
+    public PalettedContainer<RegistryEntry<Biome>> getBiomeContainer() {
         return biomeContainer;
     }
 
     public RegistryEntry<Biome> getBiome(int x, int y, int z) {
         return this.biomeContainer.get(x, y, z);
+    }
+
+    public Registry<Biome> getBiomeRegistry() {
+        return biomeRegistry;
     }
 
     private int assertInBounds(int x) throws IndexOutOfBoundsException {
