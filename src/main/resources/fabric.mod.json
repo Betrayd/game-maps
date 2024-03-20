@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "game-maps",
+	"version": "${version}",
+	"name": "Game Maps",
+	"description": "A library for editing 'template' game maps.",
+	"authors": [
+		"Igrium", "da0nedatgotaway"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "MIT",
+	"icon": "assets/game-maps/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.betrayd.gamemaps.GameMaps"
+		],
+		"client": [
+			"net.betrayd.gamemaps.GameMapsClient"
+		]
+	},
+	"mixins": [
+		"game-maps.mixins.json",
+		{
+			"config": "game-maps.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.15.7",
+		"minecraft": "~1.20.4",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
