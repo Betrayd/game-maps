@@ -123,12 +123,20 @@ public class GameChunk {
         return blockStateContainer.get(x, y, z);
     }
 
+    public BlockState getBlockState(BlockPos pos) {
+        return getBlockState(pos.getX(), pos.getY(), pos.getZ());
+    }
+
     public void setBlockState(int x, int y, int z, BlockState state) {
         assertInBounds(x);
         assertInBounds(y);
         assertInBounds(z);
 
         blockStateContainer.set(x, y, z, state);
+    }
+
+    public void setBlockState(BlockPos pos, BlockState state) {
+        setBlockState(pos.getX(), pos.getY(), pos.getZ(), state);
     }
     
     

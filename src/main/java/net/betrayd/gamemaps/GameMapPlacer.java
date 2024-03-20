@@ -2,8 +2,10 @@ package net.betrayd.gamemaps;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 
@@ -22,6 +24,11 @@ public class GameMapPlacer {
         for (var entry : gameMap.getChunks().entrySet()) {
             placeGameChunk(world, entry.getKey(), entry.getValue(), offset);
         }
+
+        for (GameMapEntity ent : gameMap.getEntities()) {
+            Vec3d pos = ent.pos().add(offset.getX(), offset.getY(), offset.getZ());
+            ent.withPos(pos).createEntities(world, world::spawnEntity);
+        }
     }
 
     public static void placeGameChunk(World world, ChunkSectionPos chunkPos, GameChunk chunk, Vec3i offset) {
@@ -33,9 +40,21 @@ public class GameMapPlacer {
             for (int z = 0; z < 16; z++) {
                 for (int x = 0; x < 16; x++) {
                     BlockState state = chunk.getBlockState(x, y, z);
-                    world.setBlockState(new BlockPos(x + xOffset, y + yOffset, z + zOffset), state, Block.FORCE_STATE);
+                    world.setBlockState(new BlockPos(x + xOffset, y + yOffset, z + zOffset), state, Block.FORCE_STATE | Block.NOTIFY_LISTENERS);
                 }
             }
         }
+
+        chunk.getBlockEntities().forEach((pos, nbt) -> {
+            int globalX = pos.getX() + xOffset;
+            int globalY = pos.getY() + yOffset;
+            int globalZ = pos.getZ() + zOffset;
+            BlockPos globalPos = new BlockPos(globalX, globalY, globalZ);
+
+            BlockState state = chunk.getBlockState(pos);
+            BlockEntity ent = BlockEntity.createFromNbt(globalPos, state, nbt);
+
+            world.addBlockEntity(ent);
+        });
     }
 }

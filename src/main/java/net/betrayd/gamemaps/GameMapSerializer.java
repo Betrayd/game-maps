@@ -131,7 +131,7 @@ public class GameMapSerializer {
 
         GameChunk chunk = new GameChunk(blocks, biomes, biomeRegistry);
 
-        NbtList blockEntities = nbt.getList("blockEntities", NbtElement.LIST_TYPE);
+        NbtList blockEntities = nbt.getList("blockEntities", NbtElement.COMPOUND_TYPE);
         if (blockEntities != null) {
             for (NbtElement blockEnt : blockEntities) {
                 chunk.putBlockEntity((NbtCompound) blockEnt);

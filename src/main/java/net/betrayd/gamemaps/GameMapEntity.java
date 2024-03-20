@@ -37,6 +37,10 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
         return new GameMapEntity(pos, nbt);
     }
 
+    public GameMapEntity withPos(Vec3d pos) {
+        return new GameMapEntity(pos, this.nbt);
+    }
+
     /**
      * Turn this MapEntity into a set of real entities (parent + children).
      * 
