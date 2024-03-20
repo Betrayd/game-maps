@@ -16,7 +16,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"net.betrayd.gamemaps.GameMaps"
+			"net.betrayd.gamemaps.GameMapsEntrypoint"
 		],
 		"client": [
 			"net.betrayd.gamemaps.GameMapsClient"

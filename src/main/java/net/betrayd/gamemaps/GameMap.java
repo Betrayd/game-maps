@@ -62,11 +62,15 @@ public class GameMap {
         return getBlock(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    public void setBlock(int x, int y, int z) {
+    public void setBlock(int x, int y, int z, BlockState block) {
         ChunkSectionPos chunkPos = ChunkSectionPos.from(x >> 4, y >> 4, z >> 4); // x / 16
 
         GameChunk chunk = getOrCreateChunk(chunkPos);
-        chunk.setBlockState(x & 0xF, y & 0xF, z & 0xF, AIR);
+        chunk.setBlockState(x & 0xF, y & 0xF, z & 0xF, block);
+    }
+
+    public void setBlock(BlockPos pos, BlockState block) {
+        setBlock(pos.getX(), pos.getY(), pos.getZ(), block);
     }
 
     @Nullable
