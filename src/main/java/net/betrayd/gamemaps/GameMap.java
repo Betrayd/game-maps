@@ -26,9 +26,15 @@ public class GameMap {
     private final Map<ChunkSectionPos, GameChunk> chunks = new HashMap<>();
 
     private final Collection<GameMapEntity> entities = new ArrayList<>();
+
+    private final GameMapMeta meta = new GameMapMeta();
     
     public GameMap(Registry<Biome> biomeRegistry) {
         this.biomeRegistry = biomeRegistry;
+    }
+    
+    public GameMapMeta getMeta() {
+        return meta;
     }
 
     public Map<ChunkSectionPos, GameChunk> getChunks() {

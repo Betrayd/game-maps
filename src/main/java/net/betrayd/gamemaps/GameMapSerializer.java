@@ -44,6 +44,7 @@ public class GameMapSerializer {
     
     public static NbtCompound serializeMap(GameMap map) {
         NbtCompound nbt = new NbtCompound();
+        map.getMeta().writeNbt(nbt);
 
         NbtList chunkList = new NbtList();
 
@@ -61,12 +62,14 @@ public class GameMapSerializer {
             entities.add(ent.createEntityNbt());
         }
         nbt.put("entities", entities);
+        
 
         return nbt;
     }
 
     public static GameMap deserializeMap(NbtCompound nbt, Registry<Biome> biomeRegistry) {
         GameMap map = new GameMap(biomeRegistry);
+        map.getMeta().readNbt(nbt);
 
         NbtList chunkList = nbt.getList("chunks", NbtElement.COMPOUND_TYPE);
 

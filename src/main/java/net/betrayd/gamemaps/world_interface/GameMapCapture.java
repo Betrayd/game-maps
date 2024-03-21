@@ -44,6 +44,8 @@ public class GameMapCapture {
             }
         }
 
+        map.getMeta().setDimensionType(world.getDimensionKey());
+
         return map;
     }
 
