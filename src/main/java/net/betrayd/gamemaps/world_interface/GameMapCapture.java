@@ -1,5 +1,7 @@
-package net.betrayd.gamemaps;
+package net.betrayd.gamemaps.world_interface;
 
+import net.betrayd.gamemaps.GameMap;
+import net.betrayd.gamemaps.GameMapEntity;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.registry.RegistryKeys;
@@ -12,7 +14,7 @@ import net.minecraft.world.World;
 /**
  * Reads an mc world and creates a game map from it.
  */
-public class GameMapReader {
+public class GameMapCapture {
     public static GameMap read(World world, BlockPos pos1, BlockPos pos2) {
         BlockPos minPos = min(pos1, pos2);
         BlockPos maxPos = max(pos1, pos2);
@@ -24,6 +26,7 @@ public class GameMapReader {
                 for (int z = minPos.getZ(); z <= maxPos.getZ(); z++) {
                     BlockPos globalPos = new BlockPos(x, y, z);
                     map.setBlock(globalPos.subtract(pos1), world.getBlockState(globalPos));
+                    map.setBiome(globalPos.subtract(pos1), world.getBiome(globalPos));
 
                     BlockEntity blockEntity = world.getBlockEntity(globalPos);
                     if (blockEntity != null) {

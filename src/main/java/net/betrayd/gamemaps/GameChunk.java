@@ -16,6 +16,7 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
+import net.minecraft.world.biome.source.BiomeCoords;
 import net.minecraft.world.chunk.PalettedContainer;
 
 public class GameChunk {
@@ -145,15 +146,42 @@ public class GameChunk {
     }
 
     public RegistryEntry<Biome> getBiome(int x, int y, int z) {
-        return this.biomeContainer.get(x, y, z);
+        assertInBounds(x);
+        assertInBounds(y);
+        assertInBounds(z);
+
+        return this.biomeContainer.get(BiomeCoords.fromBlock(x), BiomeCoords.fromBlock(y), BiomeCoords.fromBlock(z));
+    }
+
+    public RegistryEntry<Biome> getBiome(BlockPos pos) {
+        return getBiome(pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    public void setBiome(int x, int y, int z, RegistryEntry<Biome> biome) {
+        assertInBounds(x);
+        assertInBounds(y);
+        assertInBounds(z);
+
+        this.biomeContainer.set(BiomeCoords.fromBlock(x), BiomeCoords.fromBlock(y), BiomeCoords.fromBlock(z), biome);
+    }
+
+    public void setBiome(BlockPos pos, RegistryEntry<Biome> biome) {
+        setBiome(pos.getX(), pos.getY(), pos.getZ(), biome);
     }
 
     public Registry<Biome> getBiomeRegistry() {
         return biomeRegistry;
     }
 
-    private int assertInBounds(int x) throws IndexOutOfBoundsException {
+    protected static int assertInBounds(int x) throws IndexOutOfBoundsException {
         if (x < 0 || x >= 16) throw new IndexOutOfBoundsException(x);
+        return x;
+    }
+
+    protected static int assertInBiomeBounds(int x) throws IndexOutOfBoundsException {
+        if (x < 0 || x >= 16)
+            throw new IndexOutOfBoundsException("Biome coord out of bounds: " + x
+                    + " Remember, biome voxels are worth 4 regular blocks. Therefore, chunks are only 4 biome voxels wide.");
         return x;
     }
 }

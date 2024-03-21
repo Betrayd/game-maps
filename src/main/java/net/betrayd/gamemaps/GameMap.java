@@ -146,6 +146,17 @@ public class GameMap {
         return getBiome(pos.getX(), pos.getY(), pos.getZ());
     }
 
+    public void setBiome(int x, int y, int z, RegistryEntry<Biome> biome) {
+        ChunkSectionPos chunkPos = getChunkPos(x, y, z);
+        GameChunk chunk = getOrCreateChunk(chunkPos);
+
+        chunk.setBiome(x & 0xF, y & 0xF, z & 0xF, biome);
+    }
+
+    public void setBiome(BlockPos pos, RegistryEntry<Biome> biome) {
+        setBiome(pos.getX(), pos.getY(), pos.getZ(), biome);
+    }
+
     private static ChunkSectionPos getChunkPos(int x, int y, int z) {
         return ChunkSectionPos.from(x >> 4, y >> 4, z >> 4); // x >> 4 == x / 16
     }

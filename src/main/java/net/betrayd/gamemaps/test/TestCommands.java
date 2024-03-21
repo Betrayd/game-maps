@@ -56,7 +56,7 @@ public class TestCommands {
         context.getSource().sendFeedback(() -> Text.literal("Saving map ").append(Text.of(id)), false);
 
         try {
-            GameMap map = GameMapReader.read(context.getSource().getWorld(), pos1, pos2);
+            GameMap map = GameMapCreator.read(context.getSource().getWorld(), pos1, pos2);
 
             Files.createDirectories(path.getParent());
             try(BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(path))) {
