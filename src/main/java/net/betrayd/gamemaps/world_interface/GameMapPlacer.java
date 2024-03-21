@@ -1,5 +1,8 @@
-package net.betrayd.gamemaps;
+package net.betrayd.gamemaps.world_interface;
 
+import net.betrayd.gamemaps.GameChunk;
+import net.betrayd.gamemaps.GameMap;
+import net.betrayd.gamemaps.GameMapEntity;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;

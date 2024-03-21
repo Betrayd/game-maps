@@ -1,5 +1,6 @@
 package net.betrayd.gamemaps;
 
+import net.betrayd.gamemaps.test.TestCommands;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 

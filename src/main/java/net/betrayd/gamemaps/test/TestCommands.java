@@ -1,4 +1,4 @@
-package net.betrayd.gamemaps;
+package net.betrayd.gamemaps.test;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
@@ -6,6 +6,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.logging.LogUtils;
 
+import net.betrayd.gamemaps.GameMap;
+import net.betrayd.gamemaps.GameMapSerializer;
+import net.betrayd.gamemaps.world_interface.GameMapCapture;
+import net.betrayd.gamemaps.world_interface.GameMapPlacer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.BlockPosArgumentType;
@@ -56,7 +60,7 @@ public class TestCommands {
         context.getSource().sendFeedback(() -> Text.literal("Saving map ").append(Text.of(id)), false);
 
         try {
-            GameMap map = GameMapCreator.read(context.getSource().getWorld(), pos1, pos2);
+            GameMap map = GameMapCapture.read(context.getSource().getWorld(), pos1, pos2);
 
             Files.createDirectories(path.getParent());
             try(BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(path))) {
