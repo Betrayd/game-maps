@@ -12,7 +12,10 @@ import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 
 /**
- * Reads an mc world and creates a game map from it.
+ * Reads an mc world and creates a game map from it. This capture implementation
+ * reads the world block-by-block. While this allows game maps of any size and
+ * offset to be captured, it's much slower than
+ * {@link WorldAlignedMapCapture}.
  */
 public class GameMapCapture {
     public static GameMap read(World world, BlockPos pos1, BlockPos pos2) {

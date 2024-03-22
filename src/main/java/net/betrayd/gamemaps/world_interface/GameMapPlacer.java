@@ -13,7 +13,9 @@ import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 
 /**
- * Places game maps in the world.
+ * Places game maps in the world. Can cause massive hangs with large maps; it's
+ * recommended to use {@link SimpleChunkGenerator} to place large maps into empty
+ * worlds.
  */
 public class GameMapPlacer {
 
