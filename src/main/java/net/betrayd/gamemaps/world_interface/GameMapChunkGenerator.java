@@ -47,14 +47,14 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
         super(new GameMapBiomeSource(gameMap));
         this.gameMap = gameMap;
 
-        minX = MapUtils.calcMinX(gameMap.getChunks().keySet());
-        maxX = MapUtils.calcMaxX(gameMap.getChunks().keySet());
+        minX = GameMapUtils.calcMinX(gameMap.getChunks().keySet());
+        maxX = GameMapUtils.calcMaxX(gameMap.getChunks().keySet());
 
-        minY = MapUtils.calcMinY(gameMap.getChunks().keySet());
-        maxY = MapUtils.calcMaxY(gameMap.getChunks().keySet());
+        minY = GameMapUtils.calcMinY(gameMap.getChunks().keySet());
+        maxY = GameMapUtils.calcMaxY(gameMap.getChunks().keySet());
 
-        minZ = MapUtils.calcMinZ(gameMap.getChunks().keySet());
-        maxZ = MapUtils.calcMaxZ(gameMap.getChunks().keySet());
+        minZ = GameMapUtils.calcMinZ(gameMap.getChunks().keySet());
+        maxZ = GameMapUtils.calcMaxZ(gameMap.getChunks().keySet());
     }
 
     public GameMap getGameMap() {
@@ -163,7 +163,7 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
             return 0;
 
         return heightmapCache.computeIfAbsent(x, z, heightmap,
-                () -> MapUtils.getTopY(x, z, gameMap, minY, maxY, heightmap));
+                () -> GameMapUtils.getTopY(x, z, gameMap, minY, maxY, heightmap));
     }
 
     @Override

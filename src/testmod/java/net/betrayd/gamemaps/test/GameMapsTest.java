@@ -7,7 +7,7 @@ public class GameMapsTest implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        CommandRegistrationCallback.EVENT.register(MapCommand::register);
+        CommandRegistrationCallback.EVENT.register(MapTestCommands::register);
     }
     
 }

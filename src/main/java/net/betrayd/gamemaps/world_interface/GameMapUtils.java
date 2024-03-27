@@ -11,7 +11,7 @@ import net.minecraft.world.Heightmap;
 /**
  * A set of utility functions regarding game maps.
  */
-public class MapUtils {
+public class GameMapUtils {
 
     public static interface Obj2IntFunction<T> {
         public int apply(T obj);
