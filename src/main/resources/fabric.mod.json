@@ -15,12 +15,6 @@
     "icon": "assets/game-maps/icon.png",
     "environment": "*",
     "entrypoints": {
-        "main": [
-            "net.betrayd.gamemaps.GameMapsEntrypoint"
-        ],
-        "client": [
-            "net.betrayd.gamemaps.GameMapsClient"
-        ]
     },
     "mixins": [
         "game-maps.mixins.json",
@@ -32,8 +26,7 @@
     "depends": {
         "fabricloader": ">=0.15.7",
         "minecraft": "~1.20.4",
-        "java": ">=17",
-        "fabric-api": "*"
+        "java": ">=17"
     },
     "custom": {
         "modmenu": {

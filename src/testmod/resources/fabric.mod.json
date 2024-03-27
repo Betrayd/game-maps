@@ -1,0 +1,17 @@
+{
+    "schemaVersion": 1,
+    "id": "game-maps-test",
+    "version": "${version}",
+    "description": "Simple test mod for game maps library",
+    "entrypoints": {
+        "main": [
+            "net.betrayd.gamemaps.test.GameMapsTest"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=0.15.7",
+        "minecraft": "~1.20.4",
+        "java": ">=17",
+        "fabric-api": "*"
+    }
+}
