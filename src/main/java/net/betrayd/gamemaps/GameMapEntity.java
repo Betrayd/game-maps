@@ -3,13 +3,21 @@ package net.betrayd.gamemaps;
 import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector2fc;
 
+import com.mojang.logging.LogUtils;
+
+import net.minecraft.client.util.math.Vector2f;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtDouble;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtFloat;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.text.Text;
+import net.minecraft.text.Text.Serialization;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -75,6 +83,50 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
         }
 
         return nbt;
+    }
+
+    public Identifier getId() {
+        return new Identifier(nbt.getString("id"));
+    }
+
+    public void setId(Identifier id) {
+        nbt.putString("id", id.toString());
+    }
+
+    public Vector2f getRotation() {
+        NbtList rotation = nbt.getList("Rotation", NbtElement.FLOAT_TYPE);
+        if (rotation == null)
+            return new Vector2f(0, 0);
+        
+        return new Vector2f(rotation.getFloat(0), rotation.getFloat(1));
+    }
+    
+    public void setRotation(Vector2fc rot) {
+        NbtList rotation = new NbtList();
+        rotation.add(NbtFloat.of(rot.x()));
+        rotation.add(NbtFloat.of(rot.y()));
+
+        nbt.put("Rotation", rotation);
+    }
+
+    public Text getCustomName() {
+        String json = nbt.getString("CustomName");
+        if (json == null || json.isEmpty()) return Text.empty();
+
+        try {
+            return Serialization.fromJson(json);
+        } catch (Exception e) {
+            LogUtils.getLogger().error("Failed to parse entity custom name {}", json, e);
+            return Text.empty();
+        }
+    }
+
+    public void setCustomName(@Nullable Text name) {
+        if (name == null) {
+            nbt.remove("CustomName");
+        } else {
+            nbt.putString("CustomName", Serialization.toJsonString(name));
+        }
     }
 
     private static NbtList posToList(Vec3d pos) {

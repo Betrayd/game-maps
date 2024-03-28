@@ -22,7 +22,8 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.logging.LogUtils;
 
 import net.betrayd.gamemaps.GameMap;
-import net.betrayd.gamemaps.GameMapSerializer;
+import net.betrayd.gamemaps.serialization.GameMapDeserializer;
+import net.betrayd.gamemaps.serialization.GameMapSerializer;
 import net.betrayd.gamemaps.world_interface.GameMapCapture;
 import net.betrayd.gamemaps.world_interface.GameMapChunkGenerator;
 import net.betrayd.gamemaps.world_interface.GameMapPlacer;
@@ -32,6 +33,7 @@ import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager.RegistrationEnvironment;
@@ -107,7 +109,7 @@ public class MapTestCommands {
 
             Files.createDirectories(path.getParent());
             try(BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(path))) {
-                GameMapSerializer.serializeMap(map, out);
+                new GameMapSerializer().serializeMap(map, out);
             }
         } catch (Exception e) {
             LogUtils.getLogger().error("Error exporting map.", e);
@@ -140,7 +142,7 @@ public class MapTestCommands {
         try {
             Files.createDirectories(path.getParent());
             try(OutputStream out = new BufferedOutputStream(Files.newOutputStream(path))) {
-                GameMapSerializer.serializeMap(map, out);
+                new GameMapSerializer().serializeMap(map, out);
             }
 
         } catch (IOException e) {
@@ -160,8 +162,9 @@ public class MapTestCommands {
         Path path = idToPath(id);
         ServerWorld world = context.getSource().getWorld();
 
+        GameMapDeserializer deserializer = new GameMapDeserializer(world.getRegistryManager().get(RegistryKeys.BIOME));
         try(BufferedInputStream in = new BufferedInputStream(Files.newInputStream(path))) {
-            GameMap map = GameMapSerializer.deserializeMap(world.getRegistryManager().get(RegistryKeys.BIOME), in);
+            GameMap map = deserializer.deserializeMap(in);
             GameMapPlacer.placeGameMap(world, map, pos);
         } catch (Exception e) {
             LogUtils.getLogger().error("Error exporting map.", e);
@@ -182,8 +185,13 @@ public class MapTestCommands {
         ServerWorld world = context.getSource().getWorld();
         
         GameMap map;
+        GameMapDeserializer deserializer = new GameMapDeserializer(world.getRegistryManager().get(RegistryKeys.BIOME));
+        deserializer.getEntityMappers().add(ent -> {
+            ent.setId(EntityType.getId(EntityType.ARMOR_STAND));
+            return ent;
+        });
         try(BufferedInputStream in = new BufferedInputStream(Files.newInputStream(path))) {
-            map = GameMapSerializer.deserializeMap(world.getRegistryManager().get(RegistryKeys.BIOME), in);
+            map = deserializer.deserializeMap(in);
         } catch (Exception e) {
             LogUtils.getLogger().error("Error opening map.", e);
             throw new SimpleCommandExceptionType(Text.literal("Error opening map. See console for details.")).create();
