@@ -34,6 +34,7 @@ import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.nbt.NbtHelper;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager.RegistrationEnvironment;
@@ -136,7 +137,8 @@ public class MapTestCommands {
                 centerPos.getZ() + radius + 1);
 
         GameMap map = WorldAlignedMapCapture.capture(context.getSource().getWorld(), minPos, maxPos, null);
-
+        map.getCustomData().putString("custom", "I am custom data!");
+        
         Path path = idToPath(id);
 
         try {
@@ -206,6 +208,13 @@ public class MapTestCommands {
 
         context.getSource().sendFeedback(
                 () -> Text.literal("Opened map ").append(Text.of(id)).append(". Use /map join to join it."), false);
+        
+        if (!map.getCustomData().isEmpty()) {
+            context.getSource().sendFeedback(
+                    () -> Text.literal("The custom data is ")
+                            .append(NbtHelper.toPrettyPrintedText(map.getCustomData())),
+                    false);
+        }
 
         return 1;
     }

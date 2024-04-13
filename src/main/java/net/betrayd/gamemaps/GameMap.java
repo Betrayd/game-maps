@@ -33,8 +33,12 @@ public class GameMap {
         this.biomeRegistry = biomeRegistry;
     }
     
-    public GameMapMeta getMeta() {
+    public final GameMapMeta getMeta() {
         return meta;
+    }
+
+    public final NbtCompound getCustomData() {
+        return meta.getCustomData();
     }
 
     public Map<ChunkSectionPos, GameChunk> getChunks() {
