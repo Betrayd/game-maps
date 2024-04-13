@@ -31,8 +31,8 @@ public class GameMapDeserializer {
 
     private final Registry<Biome> biomeRegistry;
 
-    private final List<Function<GameMapEntity, GameMapEntity>> entityMappers = new ArrayList<>();
-    private final List<Function<NbtCompound, NbtCompound>> blockEntityMappers = new ArrayList<>();
+    private final List<Function<GameMapEntity, GameMapEntity>> entityFilters = new ArrayList<>();
+    private final List<Function<NbtCompound, NbtCompound>> blockEntityFilters = new ArrayList<>();
 
     public GameMapDeserializer(Registry<Biome> biomeRegistry) {
         this.biomeRegistry = biomeRegistry;
@@ -42,12 +42,12 @@ public class GameMapDeserializer {
         return biomeRegistry;
     }
     
-    public List<Function<GameMapEntity, GameMapEntity>> getEntityMappers() {
-        return entityMappers;
+    public List<Function<GameMapEntity, GameMapEntity>> getEntityFilters() {
+        return entityFilters;
     }
 
-    public List<Function<NbtCompound, NbtCompound>> getBlockEntityMappers() {
-        return blockEntityMappers;
+    public List<Function<NbtCompound, NbtCompound>> getBlockEntityFilters() {
+        return blockEntityFilters;
     }
 
     public GameMap deserializeMap(InputStream in) throws IOException {
@@ -86,7 +86,7 @@ public class GameMapDeserializer {
     private GameMapEntity applyEntityMappers(GameMapEntity entity) {
         if (entity == null)
             return null;
-        for (var func : entityMappers) {
+        for (var func : entityFilters) {
             entity = func.apply(entity);
             if (entity == null)
                 return null;
@@ -127,7 +127,7 @@ public class GameMapDeserializer {
     private NbtCompound applyBlockEntityMappers(NbtCompound nbt) {
         if (nbt == null)
             return null;
-        for (var mapper : blockEntityMappers) {
+        for (var mapper : blockEntityFilters) {
             nbt = mapper.apply(nbt);
             if (nbt == null)
                 return null;

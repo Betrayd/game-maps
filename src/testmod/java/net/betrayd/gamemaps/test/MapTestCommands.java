@@ -186,7 +186,7 @@ public class MapTestCommands {
         
         GameMap map;
         GameMapDeserializer deserializer = new GameMapDeserializer(world.getRegistryManager().get(RegistryKeys.BIOME));
-        deserializer.getEntityMappers().add(ent -> {
+        deserializer.getEntityFilters().add(ent -> {
             ent.setId(EntityType.getId(EntityType.ARMOR_STAND));
             return ent;
         });
