@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.mojang.logging.LogUtils;
 
+import net.betrayd.gamemaps.EntityFilter;
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
@@ -29,6 +30,10 @@ import net.minecraft.world.chunk.ChunkSection;
  */
 public class WorldAlignedMapCapture {
 
+    public static GameMap capture(World world, ChunkSectionPos pos1, ChunkSectionPos pos2, @Nullable ChunkSectionPos origin) {
+        return capture(world, pos1, pos2, origin, null);
+    }
+
     /**
      * Capture a game world from an MC world, querying chunk data directly.
      * 
@@ -38,7 +43,9 @@ public class WorldAlignedMapCapture {
      * @param origin Chunk section pos to use as the origin.
      * @return The captured game map.
      */
-    public static GameMap capture(World world, ChunkSectionPos pos1, ChunkSectionPos pos2, @Nullable ChunkSectionPos origin) {
+    public static GameMap capture(World world, ChunkSectionPos pos1, ChunkSectionPos pos2,
+            @Nullable ChunkSectionPos origin, @Nullable EntityFilter entityFilter) {
+
         ChunkSectionPos minPos = min(pos1, pos2, ChunkSectionPos::from);
         ChunkSectionPos maxPos = max(pos1, pos2, ChunkSectionPos::from);
 
@@ -74,7 +81,17 @@ public class WorldAlignedMapCapture {
             BlockPos originPos = origin.getMinPos();
 
             for (Entity ent : serverWorld.iterateEntities()) {
-                if (boxContains(blockMin, blockMax, ent.getBlockPos()) && !(ent instanceof PlayerEntity)) {
+                if (boxContains(blockMin, blockMax, ent.getBlockPos())) {
+                    Entity filtered;
+                    if (entityFilter != null) {
+                        filtered = entityFilter.apply(ent, map.getCustomData());
+                    } else {
+                        filtered = ent;
+                    }
+                    
+                    if (filtered == null || filtered instanceof PlayerEntity)
+                        continue;
+
                     map.addEntity(GameMapEntity.fromEntity(
                             ent.getPos().subtract(originPos.getX(), originPos.getY(), originPos.getZ()), ent));
                 }

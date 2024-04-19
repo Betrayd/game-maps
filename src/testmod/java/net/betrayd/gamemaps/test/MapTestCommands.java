@@ -33,8 +33,11 @@ import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.BlockPosArgumentType;
 import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
+import net.minecraft.entity.passive.ChickenEntity;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtHelper;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager.RegistrationEnvironment;
@@ -106,7 +109,8 @@ public class MapTestCommands {
         context.getSource().sendFeedback(() -> Text.literal("Saving map ").append(Text.of(id)), false);
 
         try {
-            GameMap map = GameMapCapture.read(context.getSource().getWorld(), pos1, pos2);
+            GameMap map = GameMapCapture.read(context.getSource().getWorld(), pos1, pos2,
+                    MapTestCommands::processChickens);
 
             Files.createDirectories(path.getParent());
             try(BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(path))) {
@@ -136,9 +140,9 @@ public class MapTestCommands {
         ChunkSectionPos maxPos = ChunkSectionPos.from(centerPos.getX() + radius + 1, maxY,
                 centerPos.getZ() + radius + 1);
 
-        GameMap map = WorldAlignedMapCapture.capture(context.getSource().getWorld(), minPos, maxPos, null);
-        map.getCustomData().putString("custom", "I am custom data!");
-        
+        GameMap map = WorldAlignedMapCapture.capture(context.getSource().getWorld(), minPos, maxPos, null,
+                MapTestCommands::processChickens);
+
         Path path = idToPath(id);
 
         try {
@@ -156,6 +160,30 @@ public class MapTestCommands {
         context.getSource().sendFeedback(() -> Text.literal("Exported to " + path), false);
 
         return 1;
+    }
+
+    /**
+     * A silly method for testing entity filters
+     */
+    private static Entity processChickens(Entity ent, NbtCompound nbt) {
+        if (ent instanceof ChickenEntity) {
+            NbtList list;
+            if (nbt.contains("chickens", NbtElement.LIST_TYPE)) {
+                list = nbt.getList("chickens", NbtElement.COMPOUND_TYPE);
+            } else {
+                list = new NbtList();
+                nbt.put("chickens", list);
+            }
+
+            NbtCompound compound = new NbtCompound();
+            compound.putDouble("x", ent.getX());
+            compound.putDouble("y", ent.getY());
+            compound.putDouble("z", ent.getZ());
+
+            list.add(compound);
+            return null;
+        }
+        return ent;
     }
 
     private static int place(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
@@ -188,10 +216,10 @@ public class MapTestCommands {
         
         GameMap map;
         GameMapDeserializer deserializer = new GameMapDeserializer(world.getRegistryManager().get(RegistryKeys.BIOME));
-        deserializer.getEntityFilters().add(ent -> {
-            ent.setId(EntityType.getId(EntityType.ARMOR_STAND));
-            return ent;
-        });
+        // deserializer.getEntityFilters().add(ent -> {
+        //     ent.setId(EntityType.getId(EntityType.ARMOR_STAND));
+        //     return ent;
+        // });
         try(BufferedInputStream in = new BufferedInputStream(Files.newInputStream(path))) {
             map = deserializer.deserializeMap(in);
         } catch (Exception e) {

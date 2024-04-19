@@ -1,5 +1,8 @@
 package net.betrayd.gamemaps.world_interface;
 
+import org.jetbrains.annotations.Nullable;
+
+import net.betrayd.gamemaps.EntityFilter;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
 import net.minecraft.block.entity.BlockEntity;
@@ -19,6 +22,10 @@ import net.minecraft.world.World;
  */
 public class GameMapCapture {
     public static GameMap read(World world, BlockPos pos1, BlockPos pos2) {
+        return read(world, pos1, pos2, null);
+    }
+    
+    public static GameMap read(World world, BlockPos pos1, BlockPos pos2, @Nullable EntityFilter entityFilter) {
         BlockPos minPos = min(pos1, pos2);
         BlockPos maxPos = max(pos1, pos2);
 
@@ -42,6 +49,12 @@ public class GameMapCapture {
         if (world instanceof ServerWorld serverWorld) {
             for (Entity ent : serverWorld.iterateEntities()) {
                 if (boxContains(minPos, maxPos, ent.getBlockPos())) {
+                    if (entityFilter != null)
+                        ent = entityFilter.apply(ent, map.getCustomData());
+
+                    if (ent == null)
+                        continue;
+
                     map.addEntity(GameMapEntity.fromEntity(ent.getPos().subtract(Vec3d.of(pos1)), ent));
                 }
             }
