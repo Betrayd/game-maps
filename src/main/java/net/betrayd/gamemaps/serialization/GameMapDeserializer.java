@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
+import net.betrayd.gamemaps.map_markers.MapMarker;
+import net.betrayd.gamemaps.map_markers.MapMarkerType;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -77,6 +79,15 @@ public class GameMapDeserializer {
                 GameMapEntity entity = applyEntityMappers(GameMapEntity.fromNbt((NbtCompound) entNbt));
                 if (entity != null)
                     map.addEntity(GameMapEntity.fromNbt((NbtCompound) entNbt));
+            }
+        }
+
+        NbtList markers = nbt.getList("markers", NbtElement.COMPOUND_TYPE);
+
+        for (NbtElement element : markers) {
+            MapMarker marker = MapMarkerType.deserialize((NbtCompound) element);
+            if (marker != null) {
+                map.addMarker(marker);
             }
         }
 

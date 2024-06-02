@@ -110,7 +110,7 @@ public class MapTestCommands {
 
         try {
             GameMap map = GameMapCapture.read(context.getSource().getWorld(), pos1, pos2,
-                    MapTestCommands::processChickens);
+                    null);
 
             Files.createDirectories(path.getParent());
             try(BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(path))) {
@@ -165,24 +165,31 @@ public class MapTestCommands {
     /**
      * A silly method for testing entity filters
      */
-    private static Entity processChickens(Entity ent, NbtCompound nbt) {
+    private static Entity processChickens(Entity ent, GameMap map) {
         if (ent instanceof ChickenEntity) {
-            NbtList list;
-            if (nbt.contains("chickens", NbtElement.LIST_TYPE)) {
-                list = nbt.getList("chickens", NbtElement.COMPOUND_TYPE);
-            } else {
-                list = new NbtList();
-                nbt.put("chickens", list);
-            }
-
-            NbtCompound compound = new NbtCompound();
-            compound.putDouble("x", ent.getX());
-            compound.putDouble("y", ent.getY());
-            compound.putDouble("z", ent.getZ());
-
-            list.add(compound);
+            ChickenMapMarker marker = TestMapMarkers.CHICKEN.create();
+            marker.setNamed(ent.hasCustomName());
+            marker.setPositionFromEntity(ent);
+            map.addMarker(marker);
             return null;
         }
+        // if (ent instanceof ChickenEntity) {
+        //     NbtList list;
+        //     if (nbt.contains("chickens", NbtElement.LIST_TYPE)) {
+        //         list = nbt.getList("chickens", NbtElement.COMPOUND_TYPE);
+        //     } else {
+        //         list = new NbtList();
+        //         nbt.put("chickens", list);
+        //     }
+
+        //     NbtCompound compound = new NbtCompound();
+        //     compound.putDouble("x", ent.getX());
+        //     compound.putDouble("y", ent.getY());
+        //     compound.putDouble("z", ent.getZ());
+
+        //     list.add(compound);
+        //     return null;
+        // }
         return ent;
     }
 

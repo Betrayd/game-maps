@@ -50,8 +50,8 @@ public class GameMapCapture {
             for (Entity ent : serverWorld.iterateEntities()) {
                 if (boxContains(minPos, maxPos, ent.getBlockPos())) {
                     if (entityFilter != null)
-                        ent = entityFilter.apply(ent, map.getCustomData());
-
+                        ent = entityFilter.apply(ent, map);
+                    
                     if (ent == null)
                         continue;
 

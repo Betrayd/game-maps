@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.jetbrains.annotations.Nullable;
 
+import net.betrayd.gamemaps.map_markers.MapMarker;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
@@ -26,6 +27,8 @@ public class GameMap {
     private final Map<ChunkSectionPos, GameChunk> chunks = new HashMap<>();
 
     private final Collection<GameMapEntity> entities = new ArrayList<>();
+    
+    private final Collection<MapMarker> markers = new ArrayList<>();
 
     private final GameMapMeta meta = new GameMapMeta();
     
@@ -138,6 +141,14 @@ public class GameMap {
         if (ent == null) return null;
         entities.add(ent);
         return ent;
+    }
+
+    public Collection<MapMarker> getMarkers() {
+        return markers;
+    }
+
+    public void addMarker(MapMarker mapMarker) {
+        this.markers.add(mapMarker);
     }
 
     public Registry<Biome> getBiomeRegistry() {

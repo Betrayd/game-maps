@@ -84,7 +84,7 @@ public class WorldAlignedMapCapture {
                 if (boxContains(blockMin, blockMax, ent.getBlockPos())) {
                     Entity filtered;
                     if (entityFilter != null) {
-                        filtered = entityFilter.apply(ent, map.getCustomData());
+                        filtered = entityFilter.apply(ent, map);
                     } else {
                         filtered = ent;
                     }

@@ -11,6 +11,7 @@ import com.mojang.serialization.Codec;
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
+import net.betrayd.gamemaps.map_markers.MapMarker;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -58,6 +59,11 @@ public class GameMapSerializer {
         }
         nbt.put("entities", entities);
         
+        NbtList markers = new NbtList();
+        for (MapMarker marker : map.getMarkers()) {
+            markers.add(marker.writeNbt(new NbtCompound()));
+        }
+        nbt.put("markers", markers);
 
         return nbt;
     } 
