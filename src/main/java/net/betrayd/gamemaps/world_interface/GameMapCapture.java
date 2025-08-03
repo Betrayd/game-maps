@@ -60,7 +60,7 @@ public class GameMapCapture {
             }
         }
 
-        map.getMeta().setDimensionType(world.getDimensionKey());
+        map.getMeta().setFromWorld(world);
 
         return map;
     }

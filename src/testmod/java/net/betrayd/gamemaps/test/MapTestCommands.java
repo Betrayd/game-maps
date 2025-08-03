@@ -251,6 +251,9 @@ public class MapTestCommands {
                     false);
         }
 
+        runtimeWorld.asWorld().getGameRules().setAllValues(map.getMeta().getGameRules(), runtimeWorld.asWorld().getServer());
+        runtimeWorld.asWorld().setTimeOfDay(map.getMeta().getDayTime());
+
         return 1;
     }
 

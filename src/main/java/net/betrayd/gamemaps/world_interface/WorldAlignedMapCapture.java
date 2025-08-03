@@ -101,7 +101,7 @@ public class WorldAlignedMapCapture {
             LogUtils.getLogger().warn("Can only write entities if we're in a server world.");
         }
 
-        map.getMeta().setDimensionType(world.getDimensionKey());
+        map.getMeta().setFromWorld(world);
 
         return map;
     }
