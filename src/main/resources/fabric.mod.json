@@ -17,11 +17,7 @@
     "entrypoints": {
     },
     "mixins": [
-        "game-maps.mixins.json",
-        {
-            "config": "game-maps.client.mixins.json",
-            "environment": "client"
-        }
+        "game-maps.mixins.json"
     ],
     "depends": {
         "fabricloader": ">=0.15.7",

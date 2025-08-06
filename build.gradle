@@ -28,6 +28,11 @@ loom {
 			name = "Testmod Server"
 			source sourceSets.testmod
 		}
+		testmodClient {
+			client()
+			name = "Testmod Client"
+			source sourceSets.testmod
+		}
 	}
 	createRemapConfigurations(sourceSets.testmod)
 }
