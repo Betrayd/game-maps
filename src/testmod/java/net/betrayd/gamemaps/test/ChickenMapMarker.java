@@ -2,8 +2,8 @@ package net.betrayd.gamemaps.test;
 
 import net.betrayd.gamemaps.map_markers.MapMarker;
 import net.betrayd.gamemaps.map_markers.MapMarkerType;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 
 public class ChickenMapMarker extends MapMarker {
 
@@ -22,14 +22,14 @@ public class ChickenMapMarker extends MapMarker {
     }
 
     @Override
-    protected void readCustomNbt(NbtCompound nbt) {
-        if (nbt.contains("isNamed", NbtElement.BYTE_TYPE)) {
+    protected void readCustomNbt(CompoundTag nbt) {
+        if (nbt.contains("isNamed", Tag.TAG_BYTE)) {
             isNamed = nbt.getBoolean("isNamed");
         }
     }
 
     @Override
-    protected void writeCustomNbt(NbtCompound nbt) {
+    protected void writeCustomNbt(CompoundTag nbt) {
         nbt.putBoolean("isNamed", isNamed);
     }
     

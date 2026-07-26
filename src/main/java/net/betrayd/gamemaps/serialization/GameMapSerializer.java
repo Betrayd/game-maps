@@ -12,78 +12,78 @@ import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
 import net.betrayd.gamemaps.map_markers.MapMarker;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.BiomeKeys;
-import net.minecraft.world.chunk.PalettedContainer;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.PalettedContainer;
 
 public class GameMapSerializer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GameMapSerializer.class);
 
     protected static final Codec<PalettedContainer<BlockState>> BLOCK_CODEC = PalettedContainer
-            .createPalettedContainerCodec(Block.STATE_IDS, BlockState.CODEC,
-                    PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
+            .codecRW(Block.BLOCK_STATE_REGISTRY, BlockState.CODEC,
+                    PalettedContainer.Strategy.SECTION_STATES, Blocks.AIR.defaultBlockState());
 
     public void serializeMap(GameMap map, OutputStream out) throws IOException {
         NbtIo.writeCompressed(serializeMap(map), out);
     }
     
-    public NbtCompound serializeMap(GameMap map) {
-        NbtCompound nbt = new NbtCompound();
+    public CompoundTag serializeMap(GameMap map) {
+        CompoundTag nbt = new CompoundTag();
         map.getMeta().writeNbt(nbt);
 
-        NbtList chunkList = new NbtList();
+        ListTag chunkList = new ListTag();
 
         map.getChunks().forEach((pos, chunk) -> {
-            NbtCompound chunkNbt = new NbtCompound();
+            CompoundTag chunkNbt = new CompoundTag();
             chunkNbt.putIntArray("pos", new int[] { pos.getX(), pos.getY(), pos.getZ() });
             chunkNbt.put("chunk", serializeChunk(chunk));
             chunkList.add(chunkNbt);
         });
         nbt.put("chunks", chunkList);
 
-        NbtList entities = new NbtList();
+        ListTag entities = new ListTag();
 
         for (GameMapEntity ent : map.getEntities()) {
             entities.add(ent.createEntityNbt());
         }
         nbt.put("entities", entities);
         
-        NbtList markers = new NbtList();
+        ListTag markers = new ListTag();
         for (MapMarker marker : map.getMarkers()) {
-            markers.add(marker.writeNbt(new NbtCompound()));
+            markers.add(marker.writeNbt(new CompoundTag()));
         }
         nbt.put("markers", markers);
 
         return nbt;
     } 
 
-    public NbtCompound serializeChunk(GameChunk chunk) {
-        NbtCompound nbt = new NbtCompound();
+    public CompoundTag serializeChunk(GameChunk chunk) {
+        CompoundTag nbt = new CompoundTag();
 
-        NbtElement blocks = BLOCK_CODEC
+        Tag blocks = BLOCK_CODEC
                 .encodeStart(NbtOps.INSTANCE, chunk.getBlockStateContainer())
                 .getOrThrow(false, LOGGER::error);
 
         nbt.put("blocks", blocks);
 
-        NbtElement biomes = createBiomeCodec(chunk.getBiomeRegistry())
+        Tag biomes = createBiomeCodec(chunk.getBiomeRegistry())
                 .encodeStart(NbtOps.INSTANCE, chunk.getBiomeContainer())
                 .getOrThrow(false, LOGGER::error);
 
         nbt.put("biomes", biomes);
 
-        NbtList blockEntities = new NbtList();
+        ListTag blockEntities = new ListTag();
         chunk.serializeBlockEntities().forEach(blockEntities::add);
         nbt.put("blockEntities", blockEntities);
 
@@ -91,9 +91,9 @@ public class GameMapSerializer {
     }
 
 
-    protected static Codec<PalettedContainer<RegistryEntry<Biome>>> createBiomeCodec(Registry<Biome> biomeRegistry) {
-        return PalettedContainer.createPalettedContainerCodec(biomeRegistry.getIndexedEntries(),
-                biomeRegistry.createEntryCodec(), PalettedContainer.PaletteProvider.BIOME,
-                biomeRegistry.entryOf(BiomeKeys.THE_VOID));
+    protected static Codec<PalettedContainer<Holder<Biome>>> createBiomeCodec(Registry<Biome> biomeRegistry) {
+        return PalettedContainer.codecRW(biomeRegistry.asHolderIdMap(),
+                biomeRegistry.holderByNameCodec(), PalettedContainer.Strategy.SECTION_BIOMES,
+                biomeRegistry.getHolderOrThrow(Biomes.THE_VOID));
     }
 }

@@ -4,9 +4,9 @@ import java.util.Collection;
 import java.util.function.Predicate;
 
 import net.betrayd.gamemaps.GameMap;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.Heightmap;
+import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 /**
  * A set of utility functions regarding game maps.
@@ -67,8 +67,8 @@ public class GameMapUtils {
      * @param chunks Chunks to query.
      * @return Minimum X value, in block coordinates.
      */
-    public static int calcMinX(Collection<ChunkSectionPos> chunks) {
-        return calcMinValue(chunks, ChunkSectionPos::getMinX);
+    public static int calcMinX(Collection<SectionPos> chunks) {
+        return calcMinValue(chunks, SectionPos::minBlockX);
     }
 
     /**
@@ -77,8 +77,8 @@ public class GameMapUtils {
      * @param chunks Chunks to query.
      * @return Maximum X value, in block coordinates.
      */
-    public static int calcMaxX(Collection<ChunkSectionPos> chunks) {
-        return calcMaxValue(chunks, ChunkSectionPos::getMaxX);
+    public static int calcMaxX(Collection<SectionPos> chunks) {
+        return calcMaxValue(chunks, SectionPos::maxBlockX);
     }
 
     /**
@@ -87,8 +87,8 @@ public class GameMapUtils {
      * @param chunks Chunks to query.
      * @return Minimum Y value, in block coordinates.
      */
-    public static int calcMinY(Collection<ChunkSectionPos> chunks) {
-        return calcMinValue(chunks, ChunkSectionPos::getMinY);
+    public static int calcMinY(Collection<SectionPos> chunks) {
+        return calcMinValue(chunks, SectionPos::minBlockY);
     }
 
     /**
@@ -97,8 +97,8 @@ public class GameMapUtils {
      * @param chunks Chunks to query.
      * @return Maximum Y value, in block coordinates.
      */
-    public static int calcMaxY(Collection<ChunkSectionPos> chunks) {
-        return calcMaxValue(chunks, ChunkSectionPos::getMaxY);
+    public static int calcMaxY(Collection<SectionPos> chunks) {
+        return calcMaxValue(chunks, SectionPos::maxBlockY);
     }
 
     /**
@@ -107,8 +107,8 @@ public class GameMapUtils {
      * @param chunks Chunks to query.
      * @return Minimum Z value, in block coordinates.
      */
-    public static int calcMinZ(Collection<ChunkSectionPos> chunks) {
-        return calcMinValue(chunks, ChunkSectionPos::getMaxZ);
+    public static int calcMinZ(Collection<SectionPos> chunks) {
+        return calcMinValue(chunks, SectionPos::maxBlockZ);
     }
 
     /**
@@ -117,8 +117,8 @@ public class GameMapUtils {
      * @param chunks Chunks to query.
      * @return Maximum Z value, in block coordinates.
      */
-    public static int calcMaxZ(Collection<ChunkSectionPos> chunks) {
-        return calcMaxValue(chunks, ChunkSectionPos::getMaxZ);
+    public static int calcMaxZ(Collection<SectionPos> chunks) {
+        return calcMaxValue(chunks, SectionPos::maxBlockZ);
     }
 
     /**
@@ -127,7 +127,7 @@ public class GameMapUtils {
      * @param chunks All chunks in game map.
      * @return World height, in blocks.
      */
-    public static int getWorldHeight(Collection<ChunkSectionPos> chunks) {
+    public static int getWorldHeight(Collection<SectionPos> chunks) {
         return calcMaxY(chunks) - calcMinY(chunks);
     }
 
@@ -143,8 +143,8 @@ public class GameMapUtils {
      * @param heightmap Heightmap type to use.
      * @return Top Y
      */
-    public static int getTopY(int x, int z, GameMap gameMap, int minY, int maxY, Heightmap.Type heightmap) {
-        Predicate<BlockState> predicate = heightmap.getBlockPredicate();
+    public static int getTopY(int x, int z, GameMap gameMap, int minY, int maxY, Heightmap.Types heightmap) {
+        Predicate<BlockState> predicate = heightmap.isOpaque();
 
         for (int y = maxY; y >= minY; y--) {
             BlockState state = gameMap.getBlock(x, y, z);

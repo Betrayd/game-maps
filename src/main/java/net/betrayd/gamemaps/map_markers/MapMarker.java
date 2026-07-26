@@ -1,15 +1,14 @@
 package net.betrayd.gamemaps.map_markers;
 
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.FloatTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NumericTag;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import net.minecraft.entity.Entity;
-import net.minecraft.nbt.AbstractNbtNumber;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtDouble;
-import net.minecraft.nbt.NbtFloat;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.util.math.Vec3d;
 
 /**
  * A fake "entity" notating a position on the map.
@@ -56,11 +55,11 @@ public abstract class MapMarker {
         this.z = z;
     }
 
-    public final Vec3d getPos() {
-        return new Vec3d(x, y, z);
+    public final Vec3 getPos() {
+        return new Vec3(x, y, z);
     }
 
-    public final void setPos(Vec3d pos) {
+    public final void setPos(Vec3 pos) {
         setX(pos.x);
         setY(pos.y);
         setZ(pos.z);
@@ -86,17 +85,17 @@ public abstract class MapMarker {
     }
 
     public final void setPositionFromEntity(Entity entity) {
-        setPos(entity.getPos());
-        setYaw(entity.getYaw());
-        setPitch(entity.getPitch());
+        setPos(entity.position());
+        setYaw(entity.getYRot());
+        setPitch(entity.getXRot());
     }
 
-    protected abstract void readCustomNbt(NbtCompound nbt);
-    protected abstract void writeCustomNbt(NbtCompound nbt);
+    protected abstract void readCustomNbt(CompoundTag nbt);
+    protected abstract void writeCustomNbt(CompoundTag nbt);
 
-    public final void readNbt(NbtCompound nbt) {
+    public final void readNbt(CompoundTag nbt) {
         try {
-            NbtList pos = (NbtList) nbt.get("Pos");
+            ListTag pos = (ListTag) nbt.get("Pos");
             if (pos != null && pos.size() >= 3) {
                 setX(doubleFromList(pos, 0));
                 setY(doubleFromList(pos, 1));
@@ -108,7 +107,7 @@ public abstract class MapMarker {
         }
 
         try {
-            NbtList rot = (NbtList) nbt.get("Rot");
+            ListTag rot = (ListTag) nbt.get("Rot");
             if (rot != null && rot.size() >= 2) {
                 setYaw(floatFromList(rot, 0));
                 setPitch(floatFromList(rot, 1));
@@ -121,18 +120,18 @@ public abstract class MapMarker {
         readCustomNbt(nbt);
     }
 
-    public final NbtCompound writeNbt(NbtCompound nbt) {
+    public final CompoundTag writeNbt(CompoundTag nbt) {
         writeCustomNbt(nbt);
 
-        NbtList pos = new NbtList();
-        pos.add(NbtDouble.of(x));
-        pos.add(NbtDouble.of(y));
-        pos.add(NbtDouble.of(z));
+        ListTag pos = new ListTag();
+        pos.add(DoubleTag.valueOf(x));
+        pos.add(DoubleTag.valueOf(y));
+        pos.add(DoubleTag.valueOf(z));
         nbt.put("Pos", pos);
 
-        NbtList rot = new NbtList();
-        rot.add(NbtFloat.of(yaw));
-        rot.add(NbtFloat.of(pitch));
+        ListTag rot = new ListTag();
+        rot.add(FloatTag.valueOf(yaw));
+        rot.add(FloatTag.valueOf(pitch));
         nbt.put("Rot", rot);
 
         nbt.putString("id", getType().getId().toString());
@@ -140,11 +139,11 @@ public abstract class MapMarker {
         return nbt;
     }
 
-    private static double doubleFromList(NbtList list, int index) {
-        return ((AbstractNbtNumber) list.get(index)).doubleValue();
+    private static double doubleFromList(ListTag list, int index) {
+        return ((NumericTag) list.get(index)).getAsDouble();
     }
 
-    private static float floatFromList(NbtList list, int index) {
-        return ((AbstractNbtNumber) list.get(index)).floatValue();
+    private static float floatFromList(ListTag list, int index) {
+        return ((NumericTag) list.get(index)).getAsFloat();
     }
 }

@@ -1,16 +1,17 @@
 package net.betrayd.gamemaps.world_interface;
 
+import java.util.Map.Entry;
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Places game maps in the world. Can cause massive hangs with large maps; it's
@@ -25,27 +26,27 @@ public class GameMapPlacer {
      * @param gameMap Game map to place.
      * @param offset Block offset to use.
      */
-    public static void placeGameMap(World world, GameMap gameMap, Vec3i offset) {
+    public static void placeGameMap(Level world, GameMap gameMap, Vec3i offset) {
         for (var entry : gameMap.getChunks().entrySet()) {
             placeGameChunk(world, entry.getKey(), entry.getValue(), offset);
         }
 
         for (GameMapEntity ent : gameMap.getEntities()) {
-            Vec3d pos = ent.pos().add(offset.getX(), offset.getY(), offset.getZ());
-            ent.withPos(pos).createEntities(world, world::spawnEntity);
+            Vec3 pos = ent.pos().add(offset.getX(), offset.getY(), offset.getZ());
+            ent.withPos(pos).createEntities(world, world::addFreshEntity);
         }
     }
 
-    public static void placeGameChunk(World world, ChunkSectionPos chunkPos, GameChunk chunk, Vec3i offset) {
-        int xOffset = chunkPos.getMinX() + offset.getX();
-        int yOffset = chunkPos.getMinY() + offset.getY();
-        int zOffset = chunkPos.getMinZ() + offset.getZ();
+    public static void placeGameChunk(Level world, SectionPos chunkPos, GameChunk chunk, Vec3i offset) {
+        int xOffset = chunkPos.minBlockX() + offset.getX();
+        int yOffset = chunkPos.minBlockY() + offset.getY();
+        int zOffset = chunkPos.minBlockZ() + offset.getZ();
 
         for (int y = 0; y < 16; y++) {
             for (int z = 0; z < 16; z++) {
                 for (int x = 0; x < 16; x++) {
                     BlockState state = chunk.getBlockState(x, y, z);
-                    world.setBlockState(new BlockPos(x + xOffset, y + yOffset, z + zOffset), state, Block.FORCE_STATE | Block.NOTIFY_LISTENERS);
+                    world.setBlock(new BlockPos(x + xOffset, y + yOffset, z + zOffset), state, Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_CLIENTS);
                 }
             }
         }
@@ -57,9 +58,9 @@ public class GameMapPlacer {
             BlockPos globalPos = new BlockPos(globalX, globalY, globalZ);
 
             BlockState state = chunk.getBlockState(pos);
-            BlockEntity ent = BlockEntity.createFromNbt(globalPos, state, nbt);
+            BlockEntity ent = BlockEntity.loadStatic(globalPos, state, nbt);
 
-            world.addBlockEntity(ent);
+            world.setBlockEntity(ent);
         });
     }
 }

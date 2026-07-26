@@ -8,23 +8,23 @@ import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 
 import net.betrayd.gamemaps.map_markers.MapMarker;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.BiomeKeys;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class GameMap {
-    private static final BlockState AIR = Blocks.AIR.getDefaultState();
+    private static final BlockState AIR = Blocks.AIR.defaultBlockState();
 
     private final Registry<Biome> biomeRegistry;
-    private final Map<ChunkSectionPos, GameChunk> chunks = new HashMap<>();
+    private final Map<SectionPos, GameChunk> chunks = new HashMap<>();
 
     private final Collection<GameMapEntity> entities = new ArrayList<>();
     
@@ -40,29 +40,29 @@ public class GameMap {
         return meta;
     }
 
-    public final NbtCompound getCustomData() {
+    public final CompoundTag getCustomData() {
         return meta.getCustomData();
     }
 
-    public Map<ChunkSectionPos, GameChunk> getChunks() {
+    public Map<SectionPos, GameChunk> getChunks() {
         return chunks;
     }
 
     @Nullable
-    public GameChunk getChunk(ChunkSectionPos pos) {
+    public GameChunk getChunk(SectionPos pos) {
         return chunks.get(pos);
     }
     
-    public GameChunk getOrCreateChunk(ChunkSectionPos pos) {
+    public GameChunk getOrCreateChunk(SectionPos pos) {
         return chunks.computeIfAbsent(pos, p -> new GameChunk(biomeRegistry));
     }
 
-    public void putChunk(ChunkSectionPos pos, GameChunk chunk) {
+    public void putChunk(SectionPos pos, GameChunk chunk) {
         chunks.put(pos, chunk);
     }
 
     public BlockState getBlock(int x, int y, int z) {
-        ChunkSectionPos chunkPos = getChunkPos(x, y, z);
+        SectionPos chunkPos = getChunkPos(x, y, z);
 
         GameChunk chunk = getOrCreateChunk(chunkPos);
         if (chunk == null) {
@@ -76,7 +76,7 @@ public class GameMap {
     }
 
     public void setBlock(int x, int y, int z, BlockState block) {
-        ChunkSectionPos chunkPos = ChunkSectionPos.from(x >> 4, y >> 4, z >> 4); // x / 16
+        SectionPos chunkPos = SectionPos.of(x >> 4, y >> 4, z >> 4); // x / 16
 
         GameChunk chunk = getOrCreateChunk(chunkPos);
         chunk.setBlockState(x & 0xF, y & 0xF, z & 0xF, block);
@@ -87,8 +87,8 @@ public class GameMap {
     }
 
     @Nullable
-    public NbtCompound getBlockEntity(int x, int y, int z) {
-        ChunkSectionPos chunkPos = getChunkPos(x, y, z);
+    public CompoundTag getBlockEntity(int x, int y, int z) {
+        SectionPos chunkPos = getChunkPos(x, y, z);
 
         GameChunk chunk = getChunk(chunkPos);
         if (chunk == null)
@@ -97,21 +97,21 @@ public class GameMap {
     }
 
     @Nullable
-    public NbtCompound getBlockEntity(BlockPos pos) {
+    public CompoundTag getBlockEntity(BlockPos pos) {
         return getBlockEntity(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    public void putBlockEntity(int x, int y, int z, NbtCompound blockEntity) {
-        ChunkSectionPos chunkPos = getChunkPos(x, y, z);
+    public void putBlockEntity(int x, int y, int z, CompoundTag blockEntity) {
+        SectionPos chunkPos = getChunkPos(x, y, z);
         GameChunk chunk = getOrCreateChunk(chunkPos);
         chunk.putBlockEntity(x & 0xF, y & 0xF, z & 0xF, blockEntity);
     }
 
-    public void putBlockEntity(BlockPos pos, NbtCompound blockEntity) {
+    public void putBlockEntity(BlockPos pos, CompoundTag blockEntity) {
         putBlockEntity(pos.getX(), pos.getY(), pos.getZ(), blockEntity);
     }
 
-    public void putBlockEntity(NbtCompound blockEntity) {
+    public void putBlockEntity(CompoundTag blockEntity) {
         int x = blockEntity.getInt("x");
         int y = blockEntity.getInt("y");
         int z = blockEntity.getInt("z");
@@ -120,11 +120,11 @@ public class GameMap {
     }
 
     public void putBlockEntity(BlockEntity blockEntity) {
-        putBlockEntity(blockEntity.createNbtWithIdentifyingData());
+        putBlockEntity(blockEntity.saveWithFullMetadata());
     }
 
     public void putBlockEntity(BlockPos pos, BlockEntity blockEntity) {
-        putBlockEntity(pos, blockEntity.createNbtWithIdentifyingData());
+        putBlockEntity(pos, blockEntity.saveWithFullMetadata());
     }
 
     public Collection<GameMapEntity> getEntities() {
@@ -155,31 +155,31 @@ public class GameMap {
         return biomeRegistry;
     }
 
-    public RegistryEntry<Biome> getBiome(int x, int y, int z) {
-        ChunkSectionPos chunkPos = getChunkPos(x, y, z);
+    public Holder<Biome> getBiome(int x, int y, int z) {
+        SectionPos chunkPos = getChunkPos(x, y, z);
         GameChunk chunk = getChunk(chunkPos);
 
-        if (chunk == null) return biomeRegistry.entryOf(BiomeKeys.THE_VOID);
+        if (chunk == null) return biomeRegistry.getHolderOrThrow(Biomes.THE_VOID);
         return chunk.getBiome(x & 0xF, y & 0xF, z & 0xF);
     }
 
-    public RegistryEntry<Biome> getBiome(BlockPos pos) {
+    public Holder<Biome> getBiome(BlockPos pos) {
         return getBiome(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    public void setBiome(int x, int y, int z, RegistryEntry<Biome> biome) {
-        ChunkSectionPos chunkPos = getChunkPos(x, y, z);
+    public void setBiome(int x, int y, int z, Holder<Biome> biome) {
+        SectionPos chunkPos = getChunkPos(x, y, z);
         GameChunk chunk = getOrCreateChunk(chunkPos);
 
         chunk.setBiome(x & 0xF, y & 0xF, z & 0xF, biome);
     }
 
-    public void setBiome(BlockPos pos, RegistryEntry<Biome> biome) {
+    public void setBiome(BlockPos pos, Holder<Biome> biome) {
         setBiome(pos.getX(), pos.getY(), pos.getZ(), biome);
     }
 
-    private static ChunkSectionPos getChunkPos(int x, int y, int z) {
-        return ChunkSectionPos.from(x >> 4, y >> 4, z >> 4); // x >> 4 == x / 16
+    private static SectionPos getChunkPos(int x, int y, int z) {
+        return SectionPos.of(x >> 4, y >> 4, z >> 4); // x >> 4 == x / 16
     }
 }
  

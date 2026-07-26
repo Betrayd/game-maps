@@ -1,12 +1,10 @@
 package net.betrayd.gamemaps.map_markers;
 
 import java.util.function.Function;
-
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.util.Identifier;
 
 /**
  * A type declaration of map markers
@@ -22,11 +20,11 @@ public final class MapMarkerType<T extends MapMarker> {
         return factory.apply(this);
     }
 
-    public Identifier getId() {
+    public ResourceLocation getId() {
         return REGISTRY.inverse().get(this);
     }
 
-    public static final BiMap<Identifier, MapMarkerType<?>> REGISTRY = HashBiMap.create();
+    public static final BiMap<ResourceLocation, MapMarkerType<?>> REGISTRY = HashBiMap.create();
 
     /**
      * Register a map marker.
@@ -36,7 +34,7 @@ public final class MapMarkerType<T extends MapMarker> {
      * @param type Map marker type instance.
      * @return <code>type</code>
      */
-    public static <T extends MapMarker> MapMarkerType<T> register(Identifier id, MapMarkerType<T> type) {
+    public static <T extends MapMarker> MapMarkerType<T> register(ResourceLocation id, MapMarkerType<T> type) {
         REGISTRY.put(id, type);
         return type;
     }
@@ -48,8 +46,8 @@ public final class MapMarkerType<T extends MapMarker> {
      * @return Parsed map marker. <code>null</code> if the map marker type was not
      *         found.
      */
-    public static MapMarker deserialize(NbtCompound nbt) {
-        Identifier id = Identifier.tryParse(nbt.getString("id"));
+    public static MapMarker deserialize(CompoundTag nbt) {
+        ResourceLocation id = ResourceLocation.tryParse(nbt.getString("id"));
         if (id == null)
             return null;
         

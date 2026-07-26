@@ -8,19 +8,19 @@ import net.betrayd.gamemaps.EntityFilter;
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.Vec3i;
-import net.minecraft.world.World;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.SectionPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 
 /**
  * Reads an mc world and creates a game map from it. Unlike
@@ -30,7 +30,7 @@ import net.minecraft.world.chunk.ChunkSection;
  */
 public class WorldAlignedMapCapture {
 
-    public static GameMap capture(World world, ChunkSectionPos pos1, ChunkSectionPos pos2, @Nullable ChunkSectionPos origin) {
+    public static GameMap capture(Level world, SectionPos pos1, SectionPos pos2, @Nullable SectionPos origin) {
         return capture(world, pos1, pos2, origin, null);
     }
 
@@ -43,20 +43,20 @@ public class WorldAlignedMapCapture {
      * @param origin Chunk section pos to use as the origin.
      * @return The captured game map.
      */
-    public static GameMap capture(World world, ChunkSectionPos pos1, ChunkSectionPos pos2,
-            @Nullable ChunkSectionPos origin, @Nullable EntityFilter entityFilter) {
+    public static GameMap capture(Level world, SectionPos pos1, SectionPos pos2,
+            @Nullable SectionPos origin, @Nullable EntityFilter entityFilter) {
 
-        ChunkSectionPos minPos = min(pos1, pos2, ChunkSectionPos::from);
-        ChunkSectionPos maxPos = max(pos1, pos2, ChunkSectionPos::from);
+        SectionPos minPos = min(pos1, pos2, SectionPos::of);
+        SectionPos maxPos = max(pos1, pos2, SectionPos::of);
 
-        if (origin == null) origin = ChunkSectionPos.from(0, 0, 0);
+        if (origin == null) origin = SectionPos.of(0, 0, 0);
 
-        Registry<Biome> biomeRegistry = world.getRegistryManager().get(RegistryKeys.BIOME);
+        Registry<Biome> biomeRegistry = world.registryAccess().registryOrThrow(Registries.BIOME);
         GameMap map = new GameMap(biomeRegistry);
 
         for (int x = minPos.getX(); x < maxPos.getX(); x++) {
             for (int z = minPos.getZ(); z < maxPos.getZ(); z++) {
-                Chunk chunk = world.getChunk(x, z);
+                ChunkAccess chunk = world.getChunk(x, z);
                 if (chunk == null)
                     continue;
 
@@ -65,9 +65,9 @@ public class WorldAlignedMapCapture {
                     if (gameChunks[i] == null)
                         continue;
 
-                    ChunkSectionPos pos = ChunkSectionPos.from(
+                    SectionPos pos = SectionPos.of(
                             x - origin.getX(),
-                            chunk.sectionIndexToCoord(i) - origin.getY(),
+                            chunk.getSectionYFromSectionIndex(i) - origin.getY(),
                             z - origin.getZ());
 
                     map.putChunk(pos, gameChunks[i]);
@@ -75,13 +75,13 @@ public class WorldAlignedMapCapture {
             }
         }
 
-        if (world instanceof ServerWorld serverWorld) {
-            BlockPos blockMin = new BlockPos(minPos.getMinX(), minPos.getMinY(), minPos.getMinZ());
-            BlockPos blockMax = new BlockPos(maxPos.getMaxX(), maxPos.getMaxY(), maxPos.getMaxZ());
-            BlockPos originPos = origin.getMinPos();
+        if (world instanceof ServerLevel serverWorld) {
+            BlockPos blockMin = new BlockPos(minPos.minBlockX(), minPos.minBlockY(), minPos.minBlockZ());
+            BlockPos blockMax = new BlockPos(maxPos.maxBlockX(), maxPos.maxBlockY(), maxPos.maxBlockZ());
+            BlockPos originPos = origin.origin();
 
-            for (Entity ent : serverWorld.iterateEntities()) {
-                if (boxContains(blockMin, blockMax, ent.getBlockPos())) {
+            for (Entity ent : serverWorld.getAllEntities()) {
+                if (boxContains(blockMin, blockMax, ent.blockPosition())) {
                     Entity filtered;
                     if (entityFilter != null) {
                         filtered = entityFilter.apply(ent, map);
@@ -89,11 +89,11 @@ public class WorldAlignedMapCapture {
                         filtered = ent;
                     }
                     
-                    if (filtered == null || filtered instanceof PlayerEntity)
+                    if (filtered == null || filtered instanceof Player)
                         continue;
 
                     map.addEntity(GameMapEntity.fromEntity(
-                            ent.getPos().subtract(originPos.getX(), originPos.getY(), originPos.getZ()), ent));
+                            ent.position().subtract(originPos.getX(), originPos.getY(), originPos.getZ()), ent));
                 }
             }
 
@@ -112,18 +112,18 @@ public class WorldAlignedMapCapture {
      * @param chunk         Chunk to capture.
      * @param biomeRegistry Biome registry of the world.
      * @return An array of all captured game chunks. Use
-     *         {@link Chunk#sectionIndexToCoord(int)} on the supplied chunk to get
+     *         {@link ChunkAccess#getSectionYFromSectionIndex(int)} on the supplied chunk to get
      *         chunk Y from index. Some elements may be null.
      */
-    public static GameChunk[] captureChunk(Chunk chunk, Registry<Biome> biomeRegistry) {
-        ChunkSection[] sections = chunk.getSectionArray();
+    public static GameChunk[] captureChunk(ChunkAccess chunk, Registry<Biome> biomeRegistry) {
+        LevelChunkSection[] sections = chunk.getSections();
         GameChunk[] gameChunks = new GameChunk[sections.length];
 
         for (int i = 0; i < sections.length; i++) {
             gameChunks[i] = captureChunkSection(sections[i], biomeRegistry);
         }
 
-        for (BlockPos pos : chunk.getBlockEntityPositions()) {
+        for (BlockPos pos : chunk.getBlockEntitiesPos()) {
             BlockEntity ent = chunk.getBlockEntity(pos);
 
             int index = chunk.getSectionIndex(pos.getY());
@@ -135,9 +135,9 @@ public class WorldAlignedMapCapture {
         return gameChunks;
     }
 
-    private static GameChunk captureChunkSection(ChunkSection chunkSection, Registry<Biome> biomeRegistry) {
-        return new GameChunk(chunkSection.getBlockStateContainer().copy(),
-                chunkSection.getBiomeContainer().slice().copy(), biomeRegistry);
+    private static GameChunk captureChunkSection(LevelChunkSection chunkSection, Registry<Biome> biomeRegistry) {
+        return new GameChunk(chunkSection.getStates().copy(),
+                chunkSection.getBiomes().recreate().copy(), biomeRegistry);
     }
 
     private static interface TriIntFunction<T> {

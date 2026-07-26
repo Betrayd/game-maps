@@ -14,18 +14,18 @@ import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
 import net.betrayd.gamemaps.map_markers.MapMarker;
 import net.betrayd.gamemaps.map_markers.MapMarkerType;
-import net.minecraft.block.BlockState;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.SectionPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.NbtSizeTracker;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.chunk.PalettedContainer;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.PalettedContainer;
 
 public class GameMapDeserializer {
 
@@ -34,7 +34,7 @@ public class GameMapDeserializer {
     private final Registry<Biome> biomeRegistry;
 
     private final List<Function<GameMapEntity, GameMapEntity>> entityFilters = new ArrayList<>();
-    private final List<Function<NbtCompound, NbtCompound>> blockEntityFilters = new ArrayList<>();
+    private final List<Function<CompoundTag, CompoundTag>> blockEntityFilters = new ArrayList<>();
 
     public GameMapDeserializer(Registry<Biome> biomeRegistry) {
         this.biomeRegistry = biomeRegistry;
@@ -48,44 +48,44 @@ public class GameMapDeserializer {
         return entityFilters;
     }
 
-    public List<Function<NbtCompound, NbtCompound>> getBlockEntityFilters() {
+    public List<Function<CompoundTag, CompoundTag>> getBlockEntityFilters() {
         return blockEntityFilters;
     }
 
     public GameMap deserializeMap(InputStream in) throws IOException {
-        return deserializeMap(NbtIo.readCompressed(in, NbtSizeTracker.ofUnlimitedBytes()));
+        return deserializeMap(NbtIo.readCompressed(in, NbtAccounter.unlimitedHeap()));
     }
 
-    public GameMap deserializeMap(NbtCompound nbt) {
+    public GameMap deserializeMap(CompoundTag nbt) {
         GameMap map = new GameMap(biomeRegistry);
         map.getMeta().readNbt(nbt);
 
-        NbtList chunkList = nbt.getList("chunks", NbtElement.COMPOUND_TYPE);
+        ListTag chunkList = nbt.getList("chunks", Tag.TAG_COMPOUND);
 
         if (chunkList != null) {
-            for (NbtElement chunkTag : chunkList) {
-                NbtCompound chunkNbt = (NbtCompound) chunkTag;
+            for (Tag chunkTag : chunkList) {
+                CompoundTag chunkNbt = (CompoundTag) chunkTag;
                 int[] posList = chunkNbt.getIntArray("pos");
-                ChunkSectionPos pos = ChunkSectionPos.from(posList[0], posList[1], posList[2]);
+                SectionPos pos = SectionPos.of(posList[0], posList[1], posList[2]);
                 
                 map.putChunk(pos, deserializeChunk(chunkNbt.getCompound("chunk")));
             }
         }
 
-        NbtList entityList = nbt.getList("entities", NbtElement.COMPOUND_TYPE);
+        ListTag entityList = nbt.getList("entities", Tag.TAG_COMPOUND);
 
         if (entityList != null) {
-            for (NbtElement entNbt : entityList) {
-                GameMapEntity entity = applyEntityMappers(GameMapEntity.fromNbt((NbtCompound) entNbt));
+            for (Tag entNbt : entityList) {
+                GameMapEntity entity = applyEntityMappers(GameMapEntity.fromNbt((CompoundTag) entNbt));
                 if (entity != null)
-                    map.addEntity(GameMapEntity.fromNbt((NbtCompound) entNbt));
+                    map.addEntity(GameMapEntity.fromNbt((CompoundTag) entNbt));
             }
         }
 
-        NbtList markers = nbt.getList("markers", NbtElement.COMPOUND_TYPE);
+        ListTag markers = nbt.getList("markers", Tag.TAG_COMPOUND);
 
-        for (NbtElement element : markers) {
-            MapMarker marker = MapMarkerType.deserialize((NbtCompound) element);
+        for (Tag element : markers) {
+            MapMarker marker = MapMarkerType.deserialize((CompoundTag) element);
             if (marker != null) {
                 map.addMarker(marker);
             }
@@ -105,16 +105,16 @@ public class GameMapDeserializer {
         return entity;
     }
 
-    public GameChunk deserializeChunk(NbtCompound nbt) {
+    public GameChunk deserializeChunk(CompoundTag nbt) {
         PalettedContainer<BlockState> blocks = null;
-        if (nbt.contains("blocks", NbtElement.COMPOUND_TYPE))
+        if (nbt.contains("blocks", Tag.TAG_COMPOUND))
             blocks = GameMapSerializer.BLOCK_CODEC
                     .parse(NbtOps.INSTANCE, nbt.getCompound("blocks"))
                     .promotePartial(LOGGER::error)
                     .get().left().orElse(null);
 
-        PalettedContainer<RegistryEntry<Biome>> biomes = null;
-        if (nbt.contains("biomes", NbtElement.COMPOUND_TYPE))
+        PalettedContainer<Holder<Biome>> biomes = null;
+        if (nbt.contains("biomes", Tag.TAG_COMPOUND))
             biomes = GameMapSerializer.createBiomeCodec(biomeRegistry)
                     .parse(NbtOps.INSTANCE, nbt.getCompound("biomes"))
                     .promotePartial(LOGGER::error)
@@ -122,10 +122,10 @@ public class GameMapDeserializer {
 
         GameChunk chunk = new GameChunk(blocks, biomes, biomeRegistry);
 
-        NbtList blockEntities = nbt.getList("blockEntities", NbtElement.COMPOUND_TYPE);
+        ListTag blockEntities = nbt.getList("blockEntities", Tag.TAG_COMPOUND);
         if (blockEntities != null) {
-            for (NbtElement blockEnt : blockEntities) {
-                NbtCompound compound = applyBlockEntityMappers((NbtCompound) blockEnt);
+            for (Tag blockEnt : blockEntities) {
+                CompoundTag compound = applyBlockEntityMappers((CompoundTag) blockEnt);
                 if (compound != null) {
                     chunk.putBlockEntity(compound);
                 }
@@ -135,7 +135,7 @@ public class GameMapDeserializer {
         return chunk;
     }
 
-    private NbtCompound applyBlockEntityMappers(NbtCompound nbt) {
+    private CompoundTag applyBlockEntityMappers(CompoundTag nbt) {
         if (nbt == null)
             return null;
         for (var mapper : blockEntityFilters) {

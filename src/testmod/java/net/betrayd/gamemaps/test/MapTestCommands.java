@@ -1,7 +1,7 @@
 package net.betrayd.gamemaps.test;
 
-import static net.minecraft.server.command.CommandManager.argument;
-import static net.minecraft.server.command.CommandManager.literal;
+import static net.minecraft.commands.Commands.argument;
+import static net.minecraft.commands.Commands.literal;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -29,87 +29,84 @@ import net.betrayd.gamemaps.world_interface.GameMapChunkGenerator;
 import net.betrayd.gamemaps.world_interface.GameMapPlacer;
 import net.betrayd.gamemaps.world_interface.WorldAlignedMapCapture;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.command.CommandRegistryAccess;
-import net.minecraft.command.argument.BlockPosArgumentType;
-import net.minecraft.command.argument.IdentifierArgumentType;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.passive.ChickenEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtHelper;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.registry.RegistryKeys;
+import net.minecraft.commands.CommandBuildContext;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands.CommandSelection;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.CommandManager.RegistrationEnvironment;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.util.math.Vec2f;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.animal.Chicken;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.fantasy.Fantasy;
 import xyz.nucleoid.fantasy.RuntimeWorldConfig;
 import xyz.nucleoid.fantasy.RuntimeWorldHandle;
 
 public class MapTestCommands {
 
-    private static Map<MinecraftServer, Map<Identifier, RuntimeWorldHandle>> worlds = new WeakHashMap<>();
+    private static Map<MinecraftServer, Map<ResourceLocation, RuntimeWorldHandle>> worlds = new WeakHashMap<>();
 
-    private static final SimpleCommandExceptionType MAP_NOT_OPEN = new SimpleCommandExceptionType(Text.literal("The map world is not open."));
-    private static final SimpleCommandExceptionType ALREADY_OPEN = new SimpleCommandExceptionType(Text.literal("Map is already open!"));
+    private static final SimpleCommandExceptionType MAP_NOT_OPEN = new SimpleCommandExceptionType(Component.literal("The map world is not open."));
+    private static final SimpleCommandExceptionType ALREADY_OPEN = new SimpleCommandExceptionType(Component.literal("Map is already open!"));
 
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess registryAccess,
-            RegistrationEnvironment environment) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess,
+            CommandSelection environment) {
         
         dispatcher.register(literal("map").then(
             literal("save").then(
                 literal("blocks").then(
-                    argument("pos1", BlockPosArgumentType.blockPos()).then(
-                        argument("pos2", BlockPosArgumentType.blockPos()).then(
-                            argument("id", IdentifierArgumentType.identifier()).executes(MapTestCommands::save)
+                    argument("pos1", BlockPosArgument.blockPos()).then(
+                        argument("pos2", BlockPosArgument.blockPos()).then(
+                            argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::save)
                         )
                     )
                 )
             ).then(
                 literal("chunks").then(
                     argument("radius", IntegerArgumentType.integer(1)).then(
-                        argument("id", IdentifierArgumentType.identifier()).executes(MapTestCommands::saveChunks)
+                        argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::saveChunks)
                     )
                 )
             )
         ).then(
             literal("place").then(
-                argument("pos", BlockPosArgumentType.blockPos()).then(
-                    argument("id", IdentifierArgumentType.identifier()).executes(MapTestCommands::place)
+                argument("pos", BlockPosArgument.blockPos()).then(
+                    argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::place)
                 )
             )
         ).then(
             literal("open").then(
-                argument("id", IdentifierArgumentType.identifier()).executes(MapTestCommands::open)
+                argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::open)
             )
         ).then(
             literal("join").then(
-                argument("id", IdentifierArgumentType.identifier()).executes(MapTestCommands::join)
+                argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::join)
             )
         ).then(
             literal("close").then(
-                argument("id", IdentifierArgumentType.identifier()).executes(MapTestCommands::close)
+                argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::close)
             )
         ));
     }
 
-    private static int save(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        BlockPos pos1 = BlockPosArgumentType.getBlockPos(context, "pos1");
-        BlockPos pos2 = BlockPosArgumentType.getBlockPos(context, "pos2");
-        Identifier id = IdentifierArgumentType.getIdentifier(context, "id");
+    private static int save(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        BlockPos pos1 = BlockPosArgument.getBlockPos(context, "pos1");
+        BlockPos pos2 = BlockPosArgument.getBlockPos(context, "pos2");
+        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
         Path path = idToPath(id);
 
-        context.getSource().sendFeedback(() -> Text.literal("Saving map ").append(Text.of(id)), false);
+        context.getSource().sendSuccess(() -> Component.literal("Saving map ").append(Component.translationArg(id)), false);
 
         try {
-            GameMap map = GameMapCapture.read(context.getSource().getWorld(), pos1, pos2,
+            GameMap map = GameMapCapture.read(context.getSource().getLevel(), pos1, pos2,
                     null);
 
             Files.createDirectories(path.getParent());
@@ -118,29 +115,29 @@ public class MapTestCommands {
             }
         } catch (Exception e) {
             LogUtils.getLogger().error("Error exporting map.", e);
-            throw new SimpleCommandExceptionType(Text.literal("Error exporting map. See console for details.")).create();
+            throw new SimpleCommandExceptionType(Component.literal("Error exporting map. See console for details.")).create();
         }
 
-        context.getSource().sendFeedback(() -> Text.literal("Saved to " + path), true);
+        context.getSource().sendSuccess(() -> Component.literal("Saved to " + path), true);
         return 1;
     }
 
-    private static int saveChunks(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+    private static int saveChunks(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         int radius = IntegerArgumentType.getInteger(context, "radius");
-        Identifier id = IdentifierArgumentType.getIdentifier(context, "id");
+        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
 
-        context.getSource().sendFeedback(() -> Text.literal("Exporting world as ").append(Text.of(id)), true);
+        context.getSource().sendSuccess(() -> Component.literal("Exporting world as ").append(Component.translationArg(id)), true);
 
-        ChunkSectionPos centerPos = ChunkSectionPos.from(context.getSource().getPosition());
+        SectionPos centerPos = SectionPos.of(context.getSource().getPosition());
 
-        int minY = ChunkSectionPos.getSectionCoord(context.getSource().getWorld().getBottomY());
-        int maxY = ChunkSectionPos.getSectionCoord(context.getSource().getWorld().getTopY());
+        int minY = SectionPos.blockToSectionCoord(context.getSource().getLevel().getMinBuildHeight());
+        int maxY = SectionPos.blockToSectionCoord(context.getSource().getLevel().getMaxBuildHeight());
 
-        ChunkSectionPos minPos = ChunkSectionPos.from(centerPos.getX() - radius, minY, centerPos.getZ() - radius);
-        ChunkSectionPos maxPos = ChunkSectionPos.from(centerPos.getX() + radius + 1, maxY,
+        SectionPos minPos = SectionPos.of(centerPos.getX() - radius, minY, centerPos.getZ() - radius);
+        SectionPos maxPos = SectionPos.of(centerPos.getX() + radius + 1, maxY,
                 centerPos.getZ() + radius + 1);
 
-        GameMap map = WorldAlignedMapCapture.capture(context.getSource().getWorld(), minPos, maxPos, null,
+        GameMap map = WorldAlignedMapCapture.capture(context.getSource().getLevel(), minPos, maxPos, null,
                 MapTestCommands::processChickens);
 
         Path path = idToPath(id);
@@ -153,11 +150,11 @@ public class MapTestCommands {
 
         } catch (IOException e) {
             LogUtils.getLogger().error("Error exporting map: " + id, e);
-            throw new SimpleCommandExceptionType(Text.literal("Error saving map to file. See console for details."))
+            throw new SimpleCommandExceptionType(Component.literal("Error saving map to file. See console for details."))
                     .create();
         }
 
-        context.getSource().sendFeedback(() -> Text.literal("Exported to " + path), false);
+        context.getSource().sendSuccess(() -> Component.literal("Exported to " + path), false);
 
         return 1;
     }
@@ -166,7 +163,7 @@ public class MapTestCommands {
      * A silly method for testing entity filters
      */
     private static Entity processChickens(Entity ent, GameMap map) {
-        if (ent instanceof ChickenEntity) {
+        if (ent instanceof Chicken) {
             ChickenMapMarker marker = TestMapMarkers.CHICKEN.create();
             marker.setNamed(ent.hasCustomName());
             marker.setPositionFromEntity(ent);
@@ -193,36 +190,36 @@ public class MapTestCommands {
         return ent;
     }
 
-    private static int place(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        BlockPos pos = BlockPosArgumentType.getBlockPos(context, "pos");
-        Identifier id = IdentifierArgumentType.getIdentifier(context, "id");
+    private static int place(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        BlockPos pos = BlockPosArgument.getBlockPos(context, "pos");
+        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
         Path path = idToPath(id);
-        ServerWorld world = context.getSource().getWorld();
+        ServerLevel world = context.getSource().getLevel();
 
-        GameMapDeserializer deserializer = new GameMapDeserializer(world.getRegistryManager().get(RegistryKeys.BIOME));
+        GameMapDeserializer deserializer = new GameMapDeserializer(world.registryAccess().registryOrThrow(Registries.BIOME));
         try(BufferedInputStream in = new BufferedInputStream(Files.newInputStream(path))) {
             GameMap map = deserializer.deserializeMap(in);
             GameMapPlacer.placeGameMap(world, map, pos);
         } catch (Exception e) {
             LogUtils.getLogger().error("Error exporting map.", e);
-            throw new SimpleCommandExceptionType(Text.literal("Error exporting map. See console for details.")).create();
+            throw new SimpleCommandExceptionType(Component.literal("Error exporting map. See console for details.")).create();
         }
         
         return 1;
     }
 
-    private static int open(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        Identifier id = IdentifierArgumentType.getIdentifier(context, "id");
+    private static int open(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
 
         if (getWorlds(context.getSource().getServer()).containsKey(id)) {
             throw ALREADY_OPEN.create();
         }
 
         Path path = idToPath(id);
-        ServerWorld world = context.getSource().getWorld();
+        ServerLevel world = context.getSource().getLevel();
         
         GameMap map;
-        GameMapDeserializer deserializer = new GameMapDeserializer(world.getRegistryManager().get(RegistryKeys.BIOME));
+        GameMapDeserializer deserializer = new GameMapDeserializer(world.registryAccess().registryOrThrow(Registries.BIOME));
         // deserializer.getEntityFilters().add(ent -> {
         //     ent.setId(EntityType.getId(EntityType.ARMOR_STAND));
         //     return ent;
@@ -231,7 +228,7 @@ public class MapTestCommands {
             map = deserializer.deserializeMap(in);
         } catch (Exception e) {
             LogUtils.getLogger().error("Error opening map.", e);
-            throw new SimpleCommandExceptionType(Text.literal("Error opening map. See console for details.")).create();
+            throw new SimpleCommandExceptionType(Component.literal("Error opening map. See console for details.")).create();
         }
 
         RuntimeWorldConfig config = new RuntimeWorldConfig()
@@ -241,42 +238,42 @@ public class MapTestCommands {
         RuntimeWorldHandle runtimeWorld = Fantasy.get(context.getSource().getServer()).openTemporaryWorld(config);
         getWorlds(context.getSource().getServer()).put(id, runtimeWorld);
 
-        context.getSource().sendFeedback(
-                () -> Text.literal("Opened map ").append(Text.of(id)).append(". Use /map join to join it."), false);
+        context.getSource().sendSuccess(
+                () -> Component.literal("Opened map ").append(Component.translationArg(id)).append(". Use /map join to join it."), false);
         
         if (!map.getCustomData().isEmpty()) {
-            context.getSource().sendFeedback(
-                    () -> Text.literal("The custom data is ")
-                            .append(NbtHelper.toPrettyPrintedText(map.getCustomData())),
+            context.getSource().sendSuccess(
+                    () -> Component.literal("The custom data is ")
+                            .append(NbtUtils.toPrettyComponent(map.getCustomData())),
                     false);
         }
 
-        runtimeWorld.asWorld().getGameRules().setAllValues(map.getMeta().getGameRules(), runtimeWorld.asWorld().getServer());
-        runtimeWorld.asWorld().setTimeOfDay(map.getMeta().getDayTime());
+        runtimeWorld.asWorld().getGameRules().assignFrom(map.getMeta().getGameRules(), runtimeWorld.asWorld().getServer());
+        runtimeWorld.asWorld().setDayTime(map.getMeta().getDayTime());
 
         return 1;
     }
 
-    private static int join(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        Identifier id = IdentifierArgumentType.getIdentifier(context, "id");
+    private static int join(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
 
         RuntimeWorldHandle world = getWorlds(context.getSource().getServer()).get(id);
         if (world == null) {
             throw MAP_NOT_OPEN.create();
         }
 
-        Entity ent = context.getSource().getEntityOrThrow();
+        Entity ent = context.getSource().getEntityOrException();
 
-        Vec3d pos = context.getSource().getPosition();
-        Vec2f rot = context.getSource().getRotation();
+        Vec3 pos = context.getSource().getPosition();
+        Vec2 rot = context.getSource().getRotation();
 
-        ent.teleport(world.asWorld(), pos.getX(), pos.getY(), pos.getZ(), Collections.emptySet(), rot.y, rot.x);
+        ent.teleportTo(world.asWorld(), pos.x(), pos.y(), pos.z(), Collections.emptySet(), rot.y, rot.x);
 
         return 1;
     }
     
-    private static int close(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
-        Identifier id = IdentifierArgumentType.getIdentifier(context, "id");
+    private static int close(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
 
         var worlds = getWorlds(context.getSource().getServer());
         RuntimeWorldHandle world = worlds.get(id);
@@ -290,11 +287,11 @@ public class MapTestCommands {
         return 1;
     }
     
-    private static Path idToPath(Identifier identifier) {
+    private static Path idToPath(ResourceLocation identifier) {
         return FabricLoader.getInstance().getGameDir().resolve("maps").resolve(identifier.getNamespace()).resolve(identifier.getPath() + ".nbt");
     }
 
-    private static Map<Identifier, RuntimeWorldHandle> getWorlds(MinecraftServer server) {
+    private static Map<ResourceLocation, RuntimeWorldHandle> getWorlds(MinecraftServer server) {
         return worlds.computeIfAbsent(server, s -> new HashMap<>());
     }
 }

@@ -5,14 +5,14 @@ import org.jetbrains.annotations.Nullable;
 import net.betrayd.gamemaps.EntityFilter;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3i;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Reads an mc world and creates a game map from it. This capture implementation
@@ -21,15 +21,15 @@ import net.minecraft.world.World;
  * {@link WorldAlignedMapCapture}.
  */
 public class GameMapCapture {
-    public static GameMap read(World world, BlockPos pos1, BlockPos pos2) {
+    public static GameMap read(Level world, BlockPos pos1, BlockPos pos2) {
         return read(world, pos1, pos2, null);
     }
     
-    public static GameMap read(World world, BlockPos pos1, BlockPos pos2, @Nullable EntityFilter entityFilter) {
+    public static GameMap read(Level world, BlockPos pos1, BlockPos pos2, @Nullable EntityFilter entityFilter) {
         BlockPos minPos = min(pos1, pos2);
         BlockPos maxPos = max(pos1, pos2);
 
-        GameMap map = new GameMap(world.getRegistryManager().get(RegistryKeys.BIOME));
+        GameMap map = new GameMap(world.registryAccess().registryOrThrow(Registries.BIOME));
 
         for (int y = minPos.getY(); y <= maxPos.getY(); y++) {
             for (int x = minPos.getX(); x <= maxPos.getX(); x++) {
@@ -46,16 +46,16 @@ public class GameMapCapture {
             }
         }
 
-        if (world instanceof ServerWorld serverWorld) {
-            for (Entity ent : serverWorld.iterateEntities()) {
-                if (boxContains(minPos, maxPos, ent.getBlockPos())) {
+        if (world instanceof ServerLevel serverWorld) {
+            for (Entity ent : serverWorld.getAllEntities()) {
+                if (boxContains(minPos, maxPos, ent.blockPosition())) {
                     if (entityFilter != null)
                         ent = entityFilter.apply(ent, map);
                     
                     if (ent == null)
                         continue;
 
-                    map.addEntity(GameMapEntity.fromEntity(ent.getPos().subtract(Vec3d.of(pos1)), ent));
+                    map.addEntity(GameMapEntity.fromEntity(ent.position().subtract(Vec3.atLowerCornerOf(pos1)), ent));
                 }
             }
         }

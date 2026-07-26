@@ -1,27 +1,27 @@
 package net.betrayd.gamemaps;
 
 import com.mojang.serialization.Dynamic;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.util.Identifier;
-import net.minecraft.world.GameRules;
-import net.minecraft.world.World;
-import net.minecraft.world.dimension.DimensionType;
-import net.minecraft.world.dimension.DimensionTypes;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import net.minecraft.world.level.dimension.DimensionType;
 import org.jetbrains.annotations.Nullable;
 
 public class GameMapMeta {
-    private RegistryKey<DimensionType> dimensionType = DimensionTypes.OVERWORLD;
+    private ResourceKey<DimensionType> dimensionType = BuiltinDimensionTypes.OVERWORLD;
 
 
-    public RegistryKey<DimensionType> getDimensionType() {
+    public ResourceKey<DimensionType> getDimensionType() {
         return dimensionType;
     }
 
-    public void setDimensionType(RegistryKey<DimensionType> dimensionType) {
+    public void setDimensionType(ResourceKey<DimensionType> dimensionType) {
         this.dimensionType = dimensionType;
     }
 
@@ -46,11 +46,11 @@ public class GameMapMeta {
     }
 
     @Nullable
-    private NbtCompound customData;
+    private CompoundTag customData;
 
-    public NbtCompound getCustomData() {
+    public CompoundTag getCustomData() {
         if (customData == null)
-            customData = new NbtCompound();
+            customData = new CompoundTag();
         return customData;
     }
 
@@ -58,15 +58,15 @@ public class GameMapMeta {
         customData = null;
     }
 
-    public void setFromWorld(World world) {
-        setDimensionType(world.getDimensionKey());
+    public void setFromWorld(Level world) {
+        setDimensionType(world.dimensionTypeId());
         setGameRules(world.getGameRules());
-        setDayTime(world.getTimeOfDay());
+        setDayTime(world.getDayTime());
     }
 
-    public void writeNbt(NbtCompound nbt) {
-        nbt.putString("dimensionType", dimensionType.getValue().toString());
-        nbt.put("gameRules", gameRules.toNbt());
+    public void writeNbt(CompoundTag nbt) {
+        nbt.putString("dimensionType", dimensionType.location().toString());
+        nbt.put("gameRules", gameRules.createTag());
         nbt.putLong("dayTime", dayTime);
 
         if (customData != null && !customData.isEmpty()) {
@@ -75,21 +75,21 @@ public class GameMapMeta {
 
     }
 
-    public void readNbt(NbtCompound nbt) {
-        if (nbt.contains("dimensionType", NbtElement.STRING_TYPE)) {
-            Identifier dimensionId = new Identifier(nbt.getString("dimensionType"));
-            dimensionType = RegistryKey.of(RegistryKeys.DIMENSION_TYPE, dimensionId);
+    public void readNbt(CompoundTag nbt) {
+        if (nbt.contains("dimensionType", Tag.TAG_STRING)) {
+            ResourceLocation dimensionId = new ResourceLocation(nbt.getString("dimensionType"));
+            dimensionType = ResourceKey.create(Registries.DIMENSION_TYPE, dimensionId);
         }
 
-        if (nbt.contains("gameRules", NbtElement.COMPOUND_TYPE)) {
+        if (nbt.contains("gameRules", Tag.TAG_COMPOUND)) {
             gameRules = new GameRules(new Dynamic<>(NbtOps.INSTANCE, nbt.getCompound("gameRules")));
         }
 
-        if (nbt.contains("dayTime", NbtElement.LONG_TYPE)) {
+        if (nbt.contains("dayTime", Tag.TAG_LONG)) {
             dayTime = nbt.getLong("dayTime");
         }
 
-        if (nbt.contains("custom", NbtElement.COMPOUND_TYPE)) {
+        if (nbt.contains("custom", Tag.TAG_COMPOUND)) {
             customData = nbt.getCompound("custom");
         }
 

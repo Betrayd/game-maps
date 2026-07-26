@@ -3,44 +3,42 @@ package net.betrayd.gamemaps;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
-
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.QuartPos;
+import net.minecraft.core.Registry;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.PalettedContainer;
 import org.jetbrains.annotations.Nullable;
-
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.Registry;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.biome.Biome;
-import net.minecraft.world.biome.BiomeKeys;
-import net.minecraft.world.biome.source.BiomeCoords;
-import net.minecraft.world.chunk.PalettedContainer;
 
 public class GameChunk {
     private final PalettedContainer<BlockState> blockStateContainer;
-    private final PalettedContainer<RegistryEntry<Biome>> biomeContainer;
+    private final PalettedContainer<Holder<Biome>> biomeContainer;
     private final Registry<Biome> biomeRegistry;
 
-    private final Map<BlockPos, NbtCompound> blockEntities = new HashMap<>();
+    private final Map<BlockPos, CompoundTag> blockEntities = new HashMap<>();
 
     public GameChunk(@Nullable PalettedContainer<BlockState> blockStateContainer,
-            @Nullable PalettedContainer<RegistryEntry<Biome>> biomeContainer, Registry<Biome> biomeRegistry) {
+            @Nullable PalettedContainer<Holder<Biome>> biomeContainer, Registry<Biome> biomeRegistry) {
 
         if (blockStateContainer != null) {
             this.blockStateContainer = blockStateContainer;
         } else {
-            this.blockStateContainer = new PalettedContainer<>(Block.STATE_IDS, Blocks.AIR.getDefaultState(),
-                    PalettedContainer.PaletteProvider.BLOCK_STATE);
+            this.blockStateContainer = new PalettedContainer<>(Block.BLOCK_STATE_REGISTRY, Blocks.AIR.defaultBlockState(),
+                    PalettedContainer.Strategy.SECTION_STATES);
         }
 
         if (biomeContainer != null) {
             this.biomeContainer = biomeContainer;
         } else {
-            this.biomeContainer = new PalettedContainer<>(biomeRegistry.getIndexedEntries(),
-                    biomeRegistry.entryOf(BiomeKeys.THE_VOID), PalettedContainer.PaletteProvider.BIOME);
+            this.biomeContainer = new PalettedContainer<>(biomeRegistry.asHolderIdMap(),
+                    biomeRegistry.getHolderOrThrow(Biomes.THE_VOID), PalettedContainer.Strategy.SECTION_BIOMES);
         }
 
         this.biomeRegistry = biomeRegistry;
@@ -50,7 +48,7 @@ public class GameChunk {
         this(null, null, biomeRegistry);
     }
 
-    public Map<BlockPos, NbtCompound> getBlockEntities() {
+    public Map<BlockPos, CompoundTag> getBlockEntities() {
         return blockEntities;
     }
 
@@ -58,7 +56,7 @@ public class GameChunk {
      * Add a block entity to this chunk based on its NBT position.
      * @param blockEntity Block entity NBT.
      */
-    public void putBlockEntity(NbtCompound blockEntity) {
+    public void putBlockEntity(CompoundTag blockEntity) {
         blockEntity = blockEntity.copy();
         // Block entities are stored relative to the chunk.
         int x = blockEntity.getInt("x") & 0xF;
@@ -73,10 +71,10 @@ public class GameChunk {
      * @param blockEntity Block entity to add.
      */
     public void putBlockEntity(BlockEntity blockEntity) {
-        putBlockEntity(blockEntity.createNbtWithIdentifyingData());
+        putBlockEntity(blockEntity.saveWithFullMetadata());
     }
 
-    public void putBlockEntity(BlockPos pos, NbtCompound blockEntity) {
+    public void putBlockEntity(BlockPos pos, CompoundTag blockEntity) {
         assertInBounds(pos.getX());
         assertInBounds(pos.getY());
         assertInBounds(pos.getZ());
@@ -84,17 +82,17 @@ public class GameChunk {
         blockEntities.put(pos, blockEntity);
     }
 
-    public void putBlockEntity(int x, int y, int z, NbtCompound blockEntity) {
+    public void putBlockEntity(int x, int y, int z, CompoundTag blockEntity) {
         putBlockEntity(new BlockPos(x, y, z), blockEntity);
     }
 
     @Nullable
-    public NbtCompound getBlockEntity(BlockPos pos) {
+    public CompoundTag getBlockEntity(BlockPos pos) {
         return blockEntities.get(pos);
     }
 
     @Nullable
-    public NbtCompound getBlockEntity(int x, int y, int z) {
+    public CompoundTag getBlockEntity(int x, int y, int z) {
         return blockEntities.get(new BlockPos(x, y, z));
     }
 
@@ -102,9 +100,9 @@ public class GameChunk {
      * Serialize all block entities with their correct positions.
      * @return Stream of serialized block entities.
      */
-    public Stream<NbtCompound> serializeBlockEntities() {
+    public Stream<CompoundTag> serializeBlockEntities() {
         return blockEntities.entrySet().stream().map(e -> {
-            NbtCompound nbt = e.getValue().copy();
+            CompoundTag nbt = e.getValue().copy();
             nbt.putInt("x", e.getKey().getX());
             nbt.putInt("y", e.getKey().getY());
             nbt.putInt("z", e.getKey().getZ());
@@ -141,31 +139,31 @@ public class GameChunk {
     }
     
     
-    public PalettedContainer<RegistryEntry<Biome>> getBiomeContainer() {
+    public PalettedContainer<Holder<Biome>> getBiomeContainer() {
         return biomeContainer;
     }
 
-    public RegistryEntry<Biome> getBiome(int x, int y, int z) {
+    public Holder<Biome> getBiome(int x, int y, int z) {
         assertInBounds(x);
         assertInBounds(y);
         assertInBounds(z);
 
-        return this.biomeContainer.get(BiomeCoords.fromBlock(x), BiomeCoords.fromBlock(y), BiomeCoords.fromBlock(z));
+        return this.biomeContainer.get(QuartPos.fromBlock(x), QuartPos.fromBlock(y), QuartPos.fromBlock(z));
     }
 
-    public RegistryEntry<Biome> getBiome(BlockPos pos) {
+    public Holder<Biome> getBiome(BlockPos pos) {
         return getBiome(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    public void setBiome(int x, int y, int z, RegistryEntry<Biome> biome) {
+    public void setBiome(int x, int y, int z, Holder<Biome> biome) {
         assertInBounds(x);
         assertInBounds(y);
         assertInBounds(z);
 
-        this.biomeContainer.set(BiomeCoords.fromBlock(x), BiomeCoords.fromBlock(y), BiomeCoords.fromBlock(z), biome);
+        this.biomeContainer.set(QuartPos.fromBlock(x), QuartPos.fromBlock(y), QuartPos.fromBlock(z), biome);
     }
 
-    public void setBiome(BlockPos pos, RegistryEntry<Biome> biome) {
+    public void setBiome(BlockPos pos, Holder<Biome> biome) {
         setBiome(pos.getX(), pos.getY(), pos.getZ(), biome);
     }
 

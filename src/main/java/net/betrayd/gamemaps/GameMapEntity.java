@@ -1,51 +1,49 @@
 package net.betrayd.gamemaps;
 
 import java.util.function.Consumer;
-
+import net.minecraft.client.model.geom.builders.UVPair;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.DoubleTag;
+import net.minecraft.nbt.FloatTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Component.Serializer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2fc;
 
 import com.mojang.logging.LogUtils;
 
-import net.minecraft.client.util.math.Vector2f;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtDouble;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtFloat;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.text.Text;
-import net.minecraft.text.Text.Serialization;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
-
-public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
+public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
 
     @Nullable
     public static GameMapEntity fromEntity(Entity entity) {
-        return fromEntity(entity.getPos(), entity);
+        return fromEntity(entity.position(), entity);
     }
 
-    public static GameMapEntity fromEntity(Vec3d position, Entity entity) {
-        var nbt = new NbtCompound();
-        if (!entity.saveNbt(nbt)) return null;
+    public static GameMapEntity fromEntity(Vec3 position, Entity entity) {
+        var nbt = new CompoundTag();
+        if (!entity.save(nbt)) return null;
 
         nbt.remove("UUID");;
 
         return new GameMapEntity(position, nbt);
     }
 
-    public static GameMapEntity fromNbt(NbtCompound nbt) {
-        NbtList posList = nbt.getList("Pos", NbtElement.DOUBLE_TYPE);
-        Vec3d pos = posList != null ? listToPos(posList) : Vec3d.ZERO;
+    public static GameMapEntity fromNbt(CompoundTag nbt) {
+        ListTag posList = nbt.getList("Pos", Tag.TAG_DOUBLE);
+        Vec3 pos = posList != null ? listToPos(posList) : Vec3.ZERO;
 
         return new GameMapEntity(pos, nbt);
     }
 
-    public GameMapEntity withPos(Vec3d pos) {
+    public GameMapEntity withPos(Vec3 pos) {
         return new GameMapEntity(pos, this.nbt);
     }
 
@@ -55,9 +53,9 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
      * @param world    World to put in.
      * @param consumer Entity consumer.
      */
-    public void createEntities(World world, Consumer<Entity> consumer) {
-        NbtCompound nbt = createEntityNbt();
-        EntityType.loadEntityWithPassengers(nbt, world, ent -> {
+    public void createEntities(Level world, Consumer<Entity> consumer) {
+        CompoundTag nbt = createEntityNbt();
+        EntityType.loadEntityRecursive(nbt, world, ent -> {
             consumer.accept(ent);
             return ent;
         });
@@ -67,16 +65,16 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
      * Create entity NBT data with its proper position embedded.
      * @return World-loadable entity NBT.
      */
-    public NbtCompound createEntityNbt() {
-        NbtCompound nbt = this.nbt.copy();
+    public CompoundTag createEntityNbt() {
+        CompoundTag nbt = this.nbt.copy();
 
         nbt.put("Pos", posToList(pos));
 
         nbt.remove("UUID");
 
         // AbstractDecorationEntity has special position handling with an attachment position.
-        if (nbt.contains("TileX", NbtElement.INT_TYPE)) {
-            BlockPos blockPos = BlockPos.ofFloored(pos);
+        if (nbt.contains("TileX", Tag.TAG_INT)) {
+            BlockPos blockPos = BlockPos.containing(pos);
             nbt.putInt("TileX", blockPos.getX());
             nbt.putInt("TileY", blockPos.getY());
             nbt.putInt("TileZ", blockPos.getZ());
@@ -85,59 +83,59 @@ public record GameMapEntity(Vec3d pos, NbtCompound nbt) {
         return nbt;
     }
 
-    public Identifier getId() {
-        return new Identifier(nbt.getString("id"));
+    public ResourceLocation getId() {
+        return new ResourceLocation(nbt.getString("id"));
     }
 
-    public void setId(Identifier id) {
+    public void setId(ResourceLocation id) {
         nbt.putString("id", id.toString());
     }
 
-    public Vector2f getRotation() {
-        NbtList rotation = nbt.getList("Rotation", NbtElement.FLOAT_TYPE);
+    public UVPair getRotation() {
+        ListTag rotation = nbt.getList("Rotation", Tag.TAG_FLOAT);
         if (rotation == null)
-            return new Vector2f(0, 0);
+            return new UVPair(0, 0);
         
-        return new Vector2f(rotation.getFloat(0), rotation.getFloat(1));
+        return new UVPair(rotation.getFloat(0), rotation.getFloat(1));
     }
     
     public void setRotation(Vector2fc rot) {
-        NbtList rotation = new NbtList();
-        rotation.add(NbtFloat.of(rot.x()));
-        rotation.add(NbtFloat.of(rot.y()));
+        ListTag rotation = new ListTag();
+        rotation.add(FloatTag.valueOf(rot.x()));
+        rotation.add(FloatTag.valueOf(rot.y()));
 
         nbt.put("Rotation", rotation);
     }
 
-    public Text getCustomName() {
+    public Component getCustomName() {
         String json = nbt.getString("CustomName");
-        if (json == null || json.isEmpty()) return Text.empty();
+        if (json == null || json.isEmpty()) return Component.empty();
 
         try {
-            return Serialization.fromJson(json);
+            return Serializer.fromJson(json);
         } catch (Exception e) {
             LogUtils.getLogger().error("Failed to parse entity custom name {}", json, e);
-            return Text.empty();
+            return Component.empty();
         }
     }
 
-    public void setCustomName(@Nullable Text name) {
+    public void setCustomName(@Nullable Component name) {
         if (name == null) {
             nbt.remove("CustomName");
         } else {
-            nbt.putString("CustomName", Serialization.toJsonString(name));
+            nbt.putString("CustomName", Serializer.toJson(name));
         }
     }
 
-    private static NbtList posToList(Vec3d pos) {
-        NbtList list = new NbtList();
-        list.add(NbtDouble.of(pos.getX()));
-        list.add(NbtDouble.of(pos.getY()));
-        list.add(NbtDouble.of(pos.getZ()));
+    private static ListTag posToList(Vec3 pos) {
+        ListTag list = new ListTag();
+        list.add(DoubleTag.valueOf(pos.x()));
+        list.add(DoubleTag.valueOf(pos.y()));
+        list.add(DoubleTag.valueOf(pos.z()));
         return list;
     }
 
-    private static Vec3d listToPos(NbtList list) {
-        return new Vec3d(list.getDouble(0), list.getDouble(1), list.getDouble(2));
+    private static Vec3 listToPos(ListTag list) {
+        return new Vec3(list.getDouble(0), list.getDouble(1), list.getDouble(2));
     }
 }

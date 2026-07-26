@@ -1,9 +1,8 @@
 package net.betrayd.gamemaps;
 
 
+import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
-
-import net.minecraft.entity.Entity;
 
 /**
  * A filter that can be applied to entities for processing during export.

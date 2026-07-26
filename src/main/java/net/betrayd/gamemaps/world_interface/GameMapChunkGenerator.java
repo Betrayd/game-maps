@@ -8,21 +8,21 @@ import java.util.stream.Collectors;
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.ChunkSectionPos;
-import net.minecraft.world.ChunkRegion;
-import net.minecraft.world.HeightLimitView;
-import net.minecraft.world.Heightmap;
-import net.minecraft.world.Heightmap.Type;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.ChunkSection;
-import net.minecraft.world.chunk.ProtoChunk;
-import net.minecraft.world.gen.StructureAccessor;
-import net.minecraft.world.gen.chunk.Blender;
-import net.minecraft.world.gen.chunk.VerticalBlockSample;
-import net.minecraft.world.gen.noise.NoiseConfig;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.NoiseColumn;
+import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunkSection;
+import net.minecraft.world.level.chunk.ProtoChunk;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.Heightmap.Types;
+import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.blending.Blender;
 
 /**
  * Generates chunks based on a game map. This generator assumes the game map
@@ -62,35 +62,35 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
     }
 
     @Override
-    public CompletableFuture<Chunk> populateNoise(Executor executor, Blender blender, NoiseConfig noiseConfig,
-            StructureAccessor structureAccessor, Chunk chunk) {
+    public CompletableFuture<ChunkAccess> fillFromNoise(Executor executor, Blender blender, RandomState noiseConfig,
+            StructureManager structureAccessor, ChunkAccess chunk) {
         ChunkPos chunkPos = chunk.getPos();
         
-        Map<ChunkSectionPos, GameChunk> gameChunks = gameMap.getChunks().entrySet().stream().filter(e -> {
+        Map<SectionPos, GameChunk> gameChunks = gameMap.getChunks().entrySet().stream().filter(e -> {
             return (e.getKey().getX() == chunkPos.x)
                 && (e.getKey().getZ() == chunkPos.z);
         }).collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
 
         if (gameChunks.isEmpty()) return CompletableFuture.completedFuture(chunk);
 
-        int minSectionY = ChunkSectionPos.getSectionCoord(minY);
-        int maxSectionY = ChunkSectionPos.getSectionCoord(maxY);
+        int minSectionY = SectionPos.blockToSectionCoord(minY);
+        int maxSectionY = SectionPos.blockToSectionCoord(maxY);
 
         return CompletableFuture.supplyAsync(() -> {
             for (int sectionY = maxSectionY; sectionY >= minSectionY; sectionY--) {
                 
-                ChunkSectionPos sectionPos = ChunkSectionPos.from(chunkPos, sectionY);
+                SectionPos sectionPos = SectionPos.of(chunkPos, sectionY);
                 GameChunk gameChunk = gameMap.getChunk(sectionPos);
                 if (gameChunk == null)
                     continue;
 
-                var section = chunk.getSection(chunk.sectionCoordToIndex(sectionY));
-                section.lock();
+                var section = chunk.getSection(chunk.getSectionIndexFromSectionY(sectionY));
+                section.acquire();
 
                 try {
                     addSection(chunk, section, gameChunk, sectionPos);
                 } finally {
-                    section.unlock();
+                    section.release();
                 }
             }
             return chunk;
@@ -98,9 +98,9 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
 
     }
     
-    private void addSection(Chunk chunk, ChunkSection section, GameChunk gameChunk, ChunkSectionPos chunkPos) {
-        var oceanFloor = chunk.getHeightmap(Heightmap.Type.OCEAN_FLOOR_WG);
-        var worldSurface = chunk.getHeightmap(Heightmap.Type.WORLD_SURFACE_WG);
+    private void addSection(ChunkAccess chunk, LevelChunkSection section, GameChunk gameChunk, SectionPos chunkPos) {
+        var oceanFloor = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.OCEAN_FLOOR_WG);
+        var worldSurface = chunk.getOrCreateHeightmapUnprimed(Heightmap.Types.WORLD_SURFACE_WG);
 
         for (int y = 0; y < 16; y++) {
             for (int z = 0; z < 16; z++) {
@@ -110,55 +110,55 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
 
                     section.setBlockState(x, y, z, state, false);
 
-                    oceanFloor.trackUpdate(x, y, z, state);
-                    worldSurface.trackUpdate(x, y, z, state);
+                    oceanFloor.update(x, y, z, state);
+                    worldSurface.update(x, y, z, state);
                 }
             }
         }
 
-        BlockPos chunkBlockPos = chunkPos.getMinPos();
+        BlockPos chunkBlockPos = chunkPos.origin();
         gameChunk.getBlockEntities().forEach((pos, nbt) -> {
             if (nbt == null) return;
 
-            BlockPos globalPos = chunkBlockPos.add(pos);
+            BlockPos globalPos = chunkBlockPos.offset(pos);
             nbt = nbt.copy();
             nbt.putInt("x", globalPos.getX());
             nbt.putInt("y", globalPos.getY());
             nbt.putInt("z", globalPos.getZ());
 
-            chunk.addPendingBlockEntityNbt(nbt);
+            chunk.setBlockEntityNbt(nbt);
         });
     }
 
     @Override
-    public void populateEntities(ChunkRegion region) {
-        ChunkPos chunkPos = region.getCenterPos();
+    public void spawnOriginalMobs(WorldGenRegion region) {
+        ChunkPos chunkPos = region.getCenter();
 
         ProtoChunk chunk = (ProtoChunk) region.getChunk(chunkPos.x, chunkPos.z);
 
-        BlockPos minChunkPos = new BlockPos(chunkPos.getStartX(), region.getBottomY(), chunkPos.getStartZ());
-        BlockPos maxChunkPos = new BlockPos(chunkPos.getEndX(), region.getTopY(), chunkPos.getEndZ());
+        BlockPos minChunkPos = new BlockPos(chunkPos.getMinBlockX(), region.getMinBuildHeight(), chunkPos.getMinBlockZ());
+        BlockPos maxChunkPos = new BlockPos(chunkPos.getMaxBlockX(), region.getMaxBuildHeight(), chunkPos.getMaxBlockZ());
 
         // TODO: optimize this?
         for (GameMapEntity entity : gameMap.getEntities()) {
-            if (boxContains(minChunkPos, maxChunkPos, BlockPos.ofFloored(entity.pos()))) {
+            if (boxContains(minChunkPos, maxChunkPos, BlockPos.containing(entity.pos()))) {
                 chunk.addEntity(entity.createEntityNbt());
             }
         }
     }
 
     @Override
-    public int getMinimumY() {
+    public int getMinY() {
         return minY;
     }
 
     @Override
-    public int getWorldHeight() {
+    public int getGenDepth() {
         return maxY - minY;
     }
     
     @Override
-    public int getHeight(int x, int z, Type heightmap, HeightLimitView world, NoiseConfig noiseConfig) {
+    public int getBaseHeight(int x, int z, Types heightmap, LevelHeightAccessor world, RandomState noiseConfig) {
         if (!isInBounds(x, z))
             return 0;
 
@@ -167,7 +167,7 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
     }
 
     @Override
-    public VerticalBlockSample getColumnSample(int x, int z, HeightLimitView world, NoiseConfig noiseConfig) {
+    public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor world, RandomState noiseConfig) {
         if (!isInBounds(x, z)) return VOID_SAMPLE;
 
         BlockState[] column = new BlockState[maxY - minY + 1];
@@ -175,7 +175,7 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
             column[y] = gameMap.getBlock(x, y, z);
         }
 
-        return new VerticalBlockSample(minY, column);
+        return new NoiseColumn(minY, column);
     }
 
     public boolean isInBounds(int x, int y, int z) {
