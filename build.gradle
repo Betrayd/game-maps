@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version '1.5-SNAPSHOT'
+	id 'fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -34,18 +34,16 @@ loom {
 			source sourceSets.testmod
 		}
 	}
-	createRemapConfigurations(sourceSets.testmod)
 }
 
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	testmodImplementation sourceSets.main.output
-	modTestmodImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	modTestmodImplementation include('xyz.nucleoid:fantasy:0.5.0+1.20.4')
+	testmodImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	testmodImplementation include("xyz.nucleoid:fantasy:${project.fantasy_version}")
 }
 
 processResources {
@@ -57,7 +55,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 17
+	it.options.release = 25
 }
 
 java {
@@ -66,8 +64,8 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

@@ -140,10 +140,10 @@ public abstract class MapMarker {
     }
 
     private static double doubleFromList(ListTag list, int index) {
-        return ((NumericTag) list.get(index)).getAsDouble();
+        return ((NumericTag) list.get(index)).doubleValue();
     }
 
     private static float floatFromList(ListTag list, int index) {
-        return ((NumericTag) list.get(index)).getAsFloat();
+        return ((NumericTag) list.get(index)).floatValue();
     }
 }

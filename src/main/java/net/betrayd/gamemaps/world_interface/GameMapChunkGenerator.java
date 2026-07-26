@@ -11,10 +11,12 @@ import net.betrayd.gamemaps.GameMapEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.util.Util;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -61,14 +63,13 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
         return gameMap;
     }
 
-    @Override
-    public CompletableFuture<ChunkAccess> fillFromNoise(Executor executor, Blender blender, RandomState noiseConfig,
-            StructureManager structureAccessor, ChunkAccess chunk) {
+//    @Override
+    public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState randomState, StructureManager structureManager, ChunkAccess chunk) {
         ChunkPos chunkPos = chunk.getPos();
         
         Map<SectionPos, GameChunk> gameChunks = gameMap.getChunks().entrySet().stream().filter(e -> {
-            return (e.getKey().getX() == chunkPos.x)
-                && (e.getKey().getZ() == chunkPos.z);
+            return (e.getKey().getX() == chunkPos.x())
+                && (e.getKey().getZ() == chunkPos.z());
         }).collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
 
         if (gameChunks.isEmpty()) return CompletableFuture.completedFuture(chunk);
@@ -94,7 +95,7 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
                 }
             }
             return chunk;
-        }, executor);
+        }, Util.backgroundExecutor().forName("GameMaps World Loader"));
 
     }
     
@@ -131,13 +132,18 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
     }
 
     @Override
+    public void applyCarvers(WorldGenRegion region, long seed, RandomState randomState, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk) {
+
+    }
+
+    @Override
     public void spawnOriginalMobs(WorldGenRegion region) {
         ChunkPos chunkPos = region.getCenter();
 
-        ProtoChunk chunk = (ProtoChunk) region.getChunk(chunkPos.x, chunkPos.z);
+        ProtoChunk chunk = (ProtoChunk) region.getChunk(chunkPos.x(), chunkPos.z());
 
-        BlockPos minChunkPos = new BlockPos(chunkPos.getMinBlockX(), region.getMinBuildHeight(), chunkPos.getMinBlockZ());
-        BlockPos maxChunkPos = new BlockPos(chunkPos.getMaxBlockX(), region.getMaxBuildHeight(), chunkPos.getMaxBlockZ());
+        BlockPos minChunkPos = new BlockPos(chunkPos.getMinBlockX(), region.getMinY(), chunkPos.getMinBlockZ());
+        BlockPos maxChunkPos = new BlockPos(chunkPos.getMaxBlockX(), region.getMaxY(), chunkPos.getMaxBlockZ());
 
         // TODO: optimize this?
         for (GameMapEntity entity : gameMap.getEntities()) {
@@ -156,7 +162,7 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
     public int getGenDepth() {
         return maxY - minY;
     }
-    
+
     @Override
     public int getBaseHeight(int x, int z, Types heightmap, LevelHeightAccessor world, RandomState noiseConfig) {
         if (!isInBounds(x, z))

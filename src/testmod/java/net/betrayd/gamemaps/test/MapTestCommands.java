@@ -32,14 +32,13 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands.CommandSelection;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -47,12 +46,12 @@ import net.minecraft.world.entity.animal.Chicken;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.fantasy.Fantasy;
-import xyz.nucleoid.fantasy.RuntimeWorldConfig;
-import xyz.nucleoid.fantasy.RuntimeWorldHandle;
+import xyz.nucleoid.fantasy.RuntimeLevelConfig;
+import xyz.nucleoid.fantasy.RuntimeLevelHandle;
 
 public class MapTestCommands {
 
-    private static Map<MinecraftServer, Map<ResourceLocation, RuntimeWorldHandle>> worlds = new WeakHashMap<>();
+    private static Map<MinecraftServer, Map<Identifier, RuntimeLevelHandle>> worlds = new WeakHashMap<>();
 
     private static final SimpleCommandExceptionType MAP_NOT_OPEN = new SimpleCommandExceptionType(Component.literal("The map world is not open."));
     private static final SimpleCommandExceptionType ALREADY_OPEN = new SimpleCommandExceptionType(Component.literal("Map is already open!"));
@@ -65,34 +64,34 @@ public class MapTestCommands {
                 literal("blocks").then(
                     argument("pos1", BlockPosArgument.blockPos()).then(
                         argument("pos2", BlockPosArgument.blockPos()).then(
-                            argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::save)
+                            argument("id", IdentifierArgument.id()).executes(MapTestCommands::save)
                         )
                     )
                 )
             ).then(
                 literal("chunks").then(
                     argument("radius", IntegerArgumentType.integer(1)).then(
-                        argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::saveChunks)
+                        argument("id", IdentifierArgument.id()).executes(MapTestCommands::saveChunks)
                     )
                 )
             )
         ).then(
             literal("place").then(
                 argument("pos", BlockPosArgument.blockPos()).then(
-                    argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::place)
+                    argument("id", IdentifierArgument.id()).executes(MapTestCommands::place)
                 )
             )
         ).then(
             literal("open").then(
-                argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::open)
+                argument("id", IdentifierArgument.id()).executes(MapTestCommands::open)
             )
         ).then(
             literal("join").then(
-                argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::join)
+                argument("id", IdentifierArgument.id()).executes(MapTestCommands::join)
             )
         ).then(
             literal("close").then(
-                argument("id", ResourceLocationArgument.id()).executes(MapTestCommands::close)
+                argument("id", IdentifierArgument.id()).executes(MapTestCommands::close)
             )
         ));
     }
@@ -100,7 +99,7 @@ public class MapTestCommands {
     private static int save(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         BlockPos pos1 = BlockPosArgument.getBlockPos(context, "pos1");
         BlockPos pos2 = BlockPosArgument.getBlockPos(context, "pos2");
-        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
+        Identifier id = IdentifierArgument.getId(context, "id");
         Path path = idToPath(id);
 
         context.getSource().sendSuccess(() -> Component.literal("Saving map ").append(Component.translationArg(id)), false);
@@ -124,7 +123,7 @@ public class MapTestCommands {
 
     private static int saveChunks(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         int radius = IntegerArgumentType.getInteger(context, "radius");
-        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
+        Identifier id = IdentifierArgument.getId(context, "id");
 
         context.getSource().sendSuccess(() -> Component.literal("Exporting world as ").append(Component.translationArg(id)), true);
 
@@ -192,11 +191,11 @@ public class MapTestCommands {
 
     private static int place(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         BlockPos pos = BlockPosArgument.getBlockPos(context, "pos");
-        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
+        Identifier id = IdentifierArgument.getId(context, "id");
         Path path = idToPath(id);
         ServerLevel world = context.getSource().getLevel();
 
-        GameMapDeserializer deserializer = new GameMapDeserializer(world.registryAccess().registryOrThrow(Registries.BIOME));
+        GameMapDeserializer deserializer = new GameMapDeserializer(world.registryAccess());
         try(BufferedInputStream in = new BufferedInputStream(Files.newInputStream(path))) {
             GameMap map = deserializer.deserializeMap(in);
             GameMapPlacer.placeGameMap(world, map, pos);
@@ -209,7 +208,7 @@ public class MapTestCommands {
     }
 
     private static int open(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
+        Identifier id = IdentifierArgument.getId(context, "id");
 
         if (getWorlds(context.getSource().getServer()).containsKey(id)) {
             throw ALREADY_OPEN.create();
@@ -219,7 +218,7 @@ public class MapTestCommands {
         ServerLevel world = context.getSource().getLevel();
         
         GameMap map;
-        GameMapDeserializer deserializer = new GameMapDeserializer(world.registryAccess().registryOrThrow(Registries.BIOME));
+        GameMapDeserializer deserializer = new GameMapDeserializer(world.registryAccess());
         // deserializer.getEntityFilters().add(ent -> {
         //     ent.setId(EntityType.getId(EntityType.ARMOR_STAND));
         //     return ent;
@@ -231,11 +230,11 @@ public class MapTestCommands {
             throw new SimpleCommandExceptionType(Component.literal("Error opening map. See console for details.")).create();
         }
 
-        RuntimeWorldConfig config = new RuntimeWorldConfig()
+        RuntimeLevelConfig config = new RuntimeLevelConfig()
                 .setDimensionType(map.getMeta().getDimensionType())
                 .setGenerator(new GameMapChunkGenerator(map));
 
-        RuntimeWorldHandle runtimeWorld = Fantasy.get(context.getSource().getServer()).openTemporaryWorld(config);
+        RuntimeLevelHandle runtimeWorld = Fantasy.get(context.getSource().getServer()).openTemporaryLevel(config);
         getWorlds(context.getSource().getServer()).put(id, runtimeWorld);
 
         context.getSource().sendSuccess(
@@ -248,16 +247,18 @@ public class MapTestCommands {
                     false);
         }
 
-        runtimeWorld.asWorld().getGameRules().assignFrom(map.getMeta().getGameRules(), runtimeWorld.asWorld().getServer());
-        runtimeWorld.asWorld().setDayTime(map.getMeta().getDayTime());
+        ServerLevel resultLevel = runtimeWorld.asLevel();
+        resultLevel.getGameRules().setAll(map.getMeta().getGameRules(), resultLevel.getServer());
+        resultLevel.dimensionType().defaultClock().ifPresent(clock ->
+                resultLevel.getServer().clockManager().setTotalTicks(clock, map.getMeta().getDayTime()));
 
         return 1;
     }
 
     private static int join(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
+        Identifier id = IdentifierArgument.getId(context, "id");
 
-        RuntimeWorldHandle world = getWorlds(context.getSource().getServer()).get(id);
+        RuntimeLevelHandle world = getWorlds(context.getSource().getServer()).get(id);
         if (world == null) {
             throw MAP_NOT_OPEN.create();
         }
@@ -267,16 +268,16 @@ public class MapTestCommands {
         Vec3 pos = context.getSource().getPosition();
         Vec2 rot = context.getSource().getRotation();
 
-        ent.teleportTo(world.asWorld(), pos.x(), pos.y(), pos.z(), Collections.emptySet(), rot.y, rot.x);
+        ent.teleportTo(world.asLevel(), pos.x(), pos.y(), pos.z(), Collections.emptySet(), rot.y, rot.x);
 
         return 1;
     }
     
     private static int close(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-        ResourceLocation id = ResourceLocationArgument.getId(context, "id");
+        Identifier id = IdentifierArgument.getId(context, "id");
 
         var worlds = getWorlds(context.getSource().getServer());
-        RuntimeWorldHandle world = worlds.get(id);
+        RuntimeLevelHandle world = worlds.get(id);
         if (world == null) {
             throw MAP_NOT_OPEN.create();
         }
@@ -287,11 +288,11 @@ public class MapTestCommands {
         return 1;
     }
     
-    private static Path idToPath(ResourceLocation identifier) {
+    private static Path idToPath(Identifier identifier) {
         return FabricLoader.getInstance().getGameDir().resolve("maps").resolve(identifier.getNamespace()).resolve(identifier.getPath() + ".nbt");
     }
 
-    private static Map<ResourceLocation, RuntimeWorldHandle> getWorlds(MinecraftServer server) {
+    private static Map<Identifier, RuntimeLevelHandle> getWorlds(MinecraftServer server) {
         return worlds.computeIfAbsent(server, s -> new HashMap<>());
     }
 }

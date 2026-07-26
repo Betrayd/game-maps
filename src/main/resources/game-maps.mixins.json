@@ -3,6 +3,7 @@
 	"package": "net.betrayd.gamemaps.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
+		"AccessorVoidChunkGenerator"
 	],
 	"injectors": {
 		"defaultRequire": 1

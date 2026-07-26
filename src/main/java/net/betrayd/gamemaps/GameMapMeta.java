@@ -4,10 +4,11 @@ import com.mojang.serialization.Dynamic;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.flag.FeatureFlags;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
 import net.minecraft.world.level.dimension.DimensionType;
@@ -25,14 +26,14 @@ public class GameMapMeta {
         this.dimensionType = dimensionType;
     }
 
-    private GameRules gameRules = new GameRules();
+    private GameRules gameRules = new GameRules(FeatureFlags.DEFAULT_FLAGS);
 
     public GameRules getGameRules() {
         return gameRules;
     }
 
     public void setGameRules(GameRules gameRules) {
-        this.gameRules = gameRules.copy();
+        this.gameRules = gameRules.copy(FeatureFlags.DEFAULT_FLAGS);
     }
 
     private long dayTime;
@@ -59,14 +60,17 @@ public class GameMapMeta {
     }
 
     public void setFromWorld(Level world) {
-        setDimensionType(world.dimensionTypeId());
-        setGameRules(world.getGameRules());
-        setDayTime(world.getDayTime());
+        world.dimensionTypeRegistration().unwrapKey().ifPresent(this::setDimensionType);
+        if (world instanceof ServerLevel serverLevel) {
+            setGameRules(serverLevel.getGameRules());
+        }
+        setDayTime(world.getDefaultClockTime());
     }
 
     public void writeNbt(CompoundTag nbt) {
-        nbt.putString("dimensionType", dimensionType.location().toString());
-        nbt.put("gameRules", gameRules.createTag());
+        nbt.putString("dimensionType", dimensionType.identifier().toString());
+        GameRules.codec(FeatureFlags.DEFAULT_FLAGS).encodeStart(NbtOps.INSTANCE, gameRules)
+                .result().ifPresent(tag -> nbt.put("gameRules", tag));
         nbt.putLong("dayTime", dayTime);
 
         if (customData != null && !customData.isEmpty()) {
@@ -76,22 +80,18 @@ public class GameMapMeta {
     }
 
     public void readNbt(CompoundTag nbt) {
-        if (nbt.contains("dimensionType", Tag.TAG_STRING)) {
-            ResourceLocation dimensionId = new ResourceLocation(nbt.getString("dimensionType"));
-            dimensionType = ResourceKey.create(Registries.DIMENSION_TYPE, dimensionId);
-        }
+        nbt.getString("dimensionType").ifPresent(id -> {
+            dimensionType = ResourceKey.create(Registries.DIMENSION_TYPE, Identifier.parse(id));
+        });
 
-        if (nbt.contains("gameRules", Tag.TAG_COMPOUND)) {
-            gameRules = new GameRules(new Dynamic<>(NbtOps.INSTANCE, nbt.getCompound("gameRules")));
-        }
+        nbt.getCompound("gameRules").ifPresent(gameRulesTag -> {
+            GameRules.codec(FeatureFlags.DEFAULT_FLAGS)
+                    .parse(new Dynamic<>(NbtOps.INSTANCE, gameRulesTag))
+                    .result().ifPresent(gr -> gameRules = gr);
+        });
 
-        if (nbt.contains("dayTime", Tag.TAG_LONG)) {
-            dayTime = nbt.getLong("dayTime");
-        }
+        dayTime = nbt.getLongOr("dayTime", dayTime);
 
-        if (nbt.contains("custom", Tag.TAG_COMPOUND)) {
-            customData = nbt.getCompound("custom");
-        }
-
+        nbt.getCompound("custom").ifPresent(custom -> customData = custom);
     }
 }

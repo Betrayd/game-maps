@@ -9,8 +9,8 @@ import net.minecraft.nbt.FloatTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Component.Serializer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
@@ -18,7 +18,9 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2fc;
 
+import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
+import com.mojang.serialization.JsonOps;
 
 public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
 
@@ -37,8 +39,7 @@ public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
     }
 
     public static GameMapEntity fromNbt(CompoundTag nbt) {
-        ListTag posList = nbt.getList("Pos", Tag.TAG_DOUBLE);
-        Vec3 pos = posList != null ? listToPos(posList) : Vec3.ZERO;
+        Vec3 pos = nbt.getList("Pos").map(GameMapEntity::listToPos).orElse(Vec3.ZERO);
 
         return new GameMapEntity(pos, nbt);
     }
@@ -73,7 +74,7 @@ public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
         nbt.remove("UUID");
 
         // AbstractDecorationEntity has special position handling with an attachment position.
-        if (nbt.contains("TileX", Tag.TAG_INT)) {
+        if (nbt.contains("TileX")) {
             BlockPos blockPos = BlockPos.containing(pos);
             nbt.putInt("TileX", blockPos.getX());
             nbt.putInt("TileY", blockPos.getY());
@@ -83,20 +84,17 @@ public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
         return nbt;
     }
 
-    public ResourceLocation getId() {
-        return new ResourceLocation(nbt.getString("id"));
+    public Identifier getId() {
+        return Identifier.parse(nbt.getStringOr("id", ""));
     }
 
-    public void setId(ResourceLocation id) {
+    public void setId(Identifier id) {
         nbt.putString("id", id.toString());
     }
 
     public UVPair getRotation() {
-        ListTag rotation = nbt.getList("Rotation", Tag.TAG_FLOAT);
-        if (rotation == null)
-            return new UVPair(0, 0);
-        
-        return new UVPair(rotation.getFloat(0), rotation.getFloat(1));
+        ListTag rotation = nbt.getListOrEmpty("Rotation");
+        return new UVPair(rotation.getFloatOr(0, 0), rotation.getFloatOr(1, 0));
     }
     
     public void setRotation(Vector2fc rot) {
@@ -108,11 +106,12 @@ public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
     }
 
     public Component getCustomName() {
-        String json = nbt.getString("CustomName");
-        if (json == null || json.isEmpty()) return Component.empty();
+        String json = nbt.getStringOr("CustomName", "");
+        if (json.isEmpty()) return Component.empty();
 
         try {
-            return Serializer.fromJson(json);
+            return ComponentSerialization.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(json))
+                    .result().orElseThrow();
         } catch (Exception e) {
             LogUtils.getLogger().error("Failed to parse entity custom name {}", json, e);
             return Component.empty();
@@ -123,7 +122,8 @@ public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
         if (name == null) {
             nbt.remove("CustomName");
         } else {
-            nbt.putString("CustomName", Serializer.toJson(name));
+            nbt.putString("CustomName", ComponentSerialization.CODEC.encodeStart(JsonOps.INSTANCE, name)
+                    .result().orElseThrow().toString());
         }
     }
 
@@ -136,6 +136,6 @@ public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
     }
 
     private static Vec3 listToPos(ListTag list) {
-        return new Vec3(list.getDouble(0), list.getDouble(1), list.getDouble(2));
+        return new Vec3(list.getDoubleOr(0, 0), list.getDoubleOr(1, 0), list.getDoubleOr(2, 0));
     }
 }

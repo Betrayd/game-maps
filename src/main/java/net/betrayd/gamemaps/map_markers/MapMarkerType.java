@@ -2,7 +2,7 @@ package net.betrayd.gamemaps.map_markers;
 
 import java.util.function.Function;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 
@@ -20,11 +20,11 @@ public final class MapMarkerType<T extends MapMarker> {
         return factory.apply(this);
     }
 
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return REGISTRY.inverse().get(this);
     }
 
-    public static final BiMap<ResourceLocation, MapMarkerType<?>> REGISTRY = HashBiMap.create();
+    public static final BiMap<Identifier, MapMarkerType<?>> REGISTRY = HashBiMap.create();
 
     /**
      * Register a map marker.
@@ -34,7 +34,7 @@ public final class MapMarkerType<T extends MapMarker> {
      * @param type Map marker type instance.
      * @return <code>type</code>
      */
-    public static <T extends MapMarker> MapMarkerType<T> register(ResourceLocation id, MapMarkerType<T> type) {
+    public static <T extends MapMarker> MapMarkerType<T> register(Identifier id, MapMarkerType<T> type) {
         REGISTRY.put(id, type);
         return type;
     }
@@ -47,7 +47,7 @@ public final class MapMarkerType<T extends MapMarker> {
      *         found.
      */
     public static MapMarker deserialize(CompoundTag nbt) {
-        ResourceLocation id = ResourceLocation.tryParse(nbt.getString("id"));
+        Identifier id = nbt.getString("id").map(Identifier::tryParse).orElse(null);
         if (id == null)
             return null;
         

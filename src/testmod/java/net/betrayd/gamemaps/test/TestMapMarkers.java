@@ -1,9 +1,9 @@
 package net.betrayd.gamemaps.test;
 
 import net.betrayd.gamemaps.map_markers.MapMarkerType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class TestMapMarkers {
     public static final MapMarkerType<ChickenMapMarker> CHICKEN = MapMarkerType
-            .register(new ResourceLocation("betrayd:chicken"), new MapMarkerType<>(ChickenMapMarker::new));
+            .register(Identifier.parse("betrayd:chicken"), new MapMarkerType<>(ChickenMapMarker::new));
 }

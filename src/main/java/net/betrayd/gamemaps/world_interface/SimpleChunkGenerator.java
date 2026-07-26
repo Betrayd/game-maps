@@ -1,16 +1,9 @@
 package net.betrayd.gamemaps.world_interface;
 
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-
-import com.mojang.datafixers.util.Pair;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.betrayd.gamemaps.mixin.AccessorVoidChunkGenerator;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.RegistryAccess.Frozen;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -20,37 +13,25 @@ import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeSource;
-import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
-import net.minecraft.world.level.levelgen.GenerationStep.Carving;
 import net.minecraft.world.level.levelgen.Heightmap.Types;
 import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.blending.Blender;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+import xyz.nucleoid.fantasy.util.VoidChunkGenerator;
+
+import java.util.List;
 
 /**
  * A chunk generator with empty implementations for many boilerplate methods.
  */
 public abstract class SimpleChunkGenerator extends ChunkGenerator {
 
-    public static final Codec<? extends ChunkGenerator> CODEC = new Codec<>() {
-        @Override
-        public <T> DataResult<Pair<ChunkGenerator, T>> decode(DynamicOps<T> ops, T input) {
-            return Biome.CODEC.decode(ops, ops.createString(Biomes.THE_VOID.location().toString()))
-                    .map(pair -> pair.mapFirst(VoidChunkGenerator::new));
-        }
-
-        @Override
-        public <T> DataResult<T> encode(ChunkGenerator input, DynamicOps<T> ops, T prefix) {
-            return DataResult.success(prefix);
-        }
-    };
+    public static final MapCodec<VoidChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+            Biome.CODEC.stable().fieldOf("biome").forGetter(g -> ((AccessorVoidChunkGenerator) g).gamemaps$getBiome())
+    ).apply(instance, instance.stable(VoidChunkGenerator::new)));
 
     public static final NoiseColumn VOID_SAMPLE = new NoiseColumn(0, new BlockState[0]);
 
@@ -60,25 +41,13 @@ public abstract class SimpleChunkGenerator extends ChunkGenerator {
 
     protected static FixedBiomeSource createBiomeSource(MinecraftServer server, ResourceKey<Biome> biome) {
         var registryManager = server.registryAccess();
-        return new FixedBiomeSource(registryManager.registryOrThrow(Registries.BIOME).getHolder(biome).get());
+//        return new FixedBiomeSource(registryManager.getOrThrow(Registries.BIOME).getHolder(biome).get());
+        return new FixedBiomeSource(registryManager.getOrThrow(Registries.BIOME).value().getOrThrow(biome));
     }
 
     @Override
     public void createReferences(WorldGenLevel world, StructureManager structureAccessor, ChunkAccess chunk) {
 
-    }
-
-    @Override
-    public void createStructures(RegistryAccess registryManager,
-            ChunkGeneratorStructureState placementCalculator, StructureManager structureAccessor, ChunkAccess chunk,
-            StructureTemplateManager structureTemplateManager) {
-
-    }
-
-    @Override
-    public CompletableFuture<ChunkAccess> fillFromNoise(Executor executor, Blender blender, RandomState noiseConfig,
-            StructureManager structureAccessor, ChunkAccess chunk) {
-        return CompletableFuture.completedFuture(chunk);
     }
 
     @Override
@@ -127,13 +96,8 @@ public abstract class SimpleChunkGenerator extends ChunkGenerator {
     }
 
     @Override
-    protected Codec<? extends ChunkGenerator> codec() {
+    protected MapCodec<? extends ChunkGenerator> codec() {
         return CODEC;
     }
 
-    @Override
-    public void applyCarvers(WorldGenRegion chunkRegion, long seed, RandomState noiseConfig, BiomeManager biomeAccess,
-            StructureManager structureAccessor, ChunkAccess chunk, Carving carverStep) {
-
-    }
 }

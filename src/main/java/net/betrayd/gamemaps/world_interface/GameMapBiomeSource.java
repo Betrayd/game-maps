@@ -4,7 +4,7 @@ import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 import net.betrayd.gamemaps.GameMap;
 import net.minecraft.core.Holder;
@@ -14,6 +14,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate.Sampler;
 import net.minecraft.world.level.biome.FixedBiomeSource;
+import org.jspecify.annotations.NonNull;
 
 /**
  * A <code>BiomeSource</code> based on the biomes from a game map, mainly for
@@ -25,42 +26,40 @@ public class GameMapBiomeSource extends BiomeSource {
      * We never need to deserialize this biome source, so a bullshit codec provides
      * a fixed biome source with a random biome upon deserialization.
      */
-    public static final Codec<BiomeSource> CODEC = (Biome.CODEC.fieldOf("biome"))
-            .<BiomeSource>xmap(FixedBiomeSource::new, biomeSource -> {
-                return biomeSource.possibleBiomes().iterator().next();
-            }).stable().codec();
+    public static final MapCodec<BiomeSource> CODEC = (Biome.CODEC.fieldOf("biome"))
+            .<BiomeSource>xmap(FixedBiomeSource::new, biomeSource ->
+                    biomeSource.possibleBiomes().iterator().next()).stable();
 
     private final GameMap gameMap;
 
     public GameMapBiomeSource(GameMap gameMap) {
         this.gameMap = gameMap;
     }
-    
+
     @Nullable
     public GameMap getGameMap() {
         return gameMap;
     }
-    
-    public Codec<BiomeSource> codec() {
+
+    @Override
+    protected @NonNull MapCodec<? extends BiomeSource> codec() {
         return CODEC;
     }
 
     @Override
-    protected Stream<Holder<Biome>> collectPossibleBiomes() {
-        if (gameMap == null) {
-        }
-
+    protected @NonNull Stream<Holder<Biome>> collectPossibleBiomes() {
         Registry<Biome> biomes = gameMap.getBiomeRegistry();
-        return gameMap.getBiomeRegistry().holders().map(b -> biomes.wrapAsHolder(b.value()));
+        return gameMap.getBiomeRegistry().entrySet().stream()
+                .map(e -> biomes.wrapAsHolder(e.getValue()));
     }
 
     @Override
-    public Holder<Biome> getNoiseBiome(int x, int y, int z, Sampler var4) {
+    public @NonNull Holder<Biome> getNoiseBiome(int x, int y, int z, Sampler var4) {
         int blockX = QuartPos.toBlock(x);
         int blockY = QuartPos.toBlock(y);
         int blockZ = QuartPos.toBlock(z);
 
         return gameMap.getBiome(blockX, blockY, blockZ);
     }
-    
+
 }

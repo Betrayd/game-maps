@@ -3,10 +3,9 @@ package net.betrayd.gamemaps;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.QuartPos;
-import net.minecraft.core.Registry;
+
+import net.minecraft.core.*;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
@@ -15,37 +14,41 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainer;
+import net.minecraft.world.level.chunk.PalettedContainerFactory;
+import net.minecraft.world.level.chunk.Strategy;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class GameChunk {
     private final PalettedContainer<BlockState> blockStateContainer;
     private final PalettedContainer<Holder<Biome>> biomeContainer;
-    private final Registry<Biome> biomeRegistry;
+
+    private final RegistryAccess registryAccess;
 
     private final Map<BlockPos, CompoundTag> blockEntities = new HashMap<>();
 
     public GameChunk(@Nullable PalettedContainer<BlockState> blockStateContainer,
-            @Nullable PalettedContainer<Holder<Biome>> biomeContainer, Registry<Biome> biomeRegistry) {
+            @Nullable PalettedContainer<Holder<Biome>> biomeContainer, RegistryAccess registryAccess) {
 
-        if (blockStateContainer != null) {
-            this.blockStateContainer = blockStateContainer;
-        } else {
-            this.blockStateContainer = new PalettedContainer<>(Block.BLOCK_STATE_REGISTRY, Blocks.AIR.defaultBlockState(),
-                    PalettedContainer.Strategy.SECTION_STATES);
-        }
+        this.registryAccess = registryAccess;
+        var containerFactory = PalettedContainerFactory.create(registryAccess);
 
-        if (biomeContainer != null) {
-            this.biomeContainer = biomeContainer;
-        } else {
-            this.biomeContainer = new PalettedContainer<>(biomeRegistry.asHolderIdMap(),
-                    biomeRegistry.getHolderOrThrow(Biomes.THE_VOID), PalettedContainer.Strategy.SECTION_BIOMES);
-        }
+        this.blockStateContainer = blockStateContainer != null
+                ? blockStateContainer
+                : containerFactory.createForBlockStates();
 
-        this.biomeRegistry = biomeRegistry;
+        this.biomeContainer = biomeContainer != null
+                ? biomeContainer
+                : containerFactory.createForBiomes();
+
     }
 
-    public GameChunk(Registry<Biome> biomeRegistry) {
-        this(null, null, biomeRegistry);
+    public GameChunk(@NotNull RegistryAccess registryAccess) {
+        this(null, null, registryAccess);
+    }
+
+    public RegistryAccess getRegistryAccess() {
+        return registryAccess;
     }
 
     public Map<BlockPos, CompoundTag> getBlockEntities() {
@@ -59,9 +62,9 @@ public class GameChunk {
     public void putBlockEntity(CompoundTag blockEntity) {
         blockEntity = blockEntity.copy();
         // Block entities are stored relative to the chunk.
-        int x = blockEntity.getInt("x") & 0xF;
-        int y = blockEntity.getInt("y") & 0xF;
-        int z = blockEntity.getInt("z") & 0xF;
+        int x = blockEntity.getInt("x").orElse(0) & 0xF;
+        int y = blockEntity.getInt("y").orElse(0) & 0xF;
+        int z = blockEntity.getInt("z").orElse(0) & 0xF;
 
         blockEntities.put(new BlockPos(x, y, z), blockEntity);
     }
@@ -71,7 +74,8 @@ public class GameChunk {
      * @param blockEntity Block entity to add.
      */
     public void putBlockEntity(BlockEntity blockEntity) {
-        putBlockEntity(blockEntity.saveWithFullMetadata());
+        putBlockEntity(blockEntity.saveWithFullMetadata(registryAccess));
+//        putBlockEntity(blockEntity.saveWithFullMetadata());
     }
 
     public void putBlockEntity(BlockPos pos, CompoundTag blockEntity) {
@@ -167,19 +171,10 @@ public class GameChunk {
         setBiome(pos.getX(), pos.getY(), pos.getZ(), biome);
     }
 
-    public Registry<Biome> getBiomeRegistry() {
-        return biomeRegistry;
-    }
-
-    protected static int assertInBounds(int x) throws IndexOutOfBoundsException {
-        if (x < 0 || x >= 16) throw new IndexOutOfBoundsException(x);
-        return x;
-    }
-
-    protected static int assertInBiomeBounds(int x) throws IndexOutOfBoundsException {
-        if (x < 0 || x >= 16)
-            throw new IndexOutOfBoundsException("Biome coord out of bounds: " + x
+    protected static int assertInBounds(int val) throws IndexOutOfBoundsException {
+        if (val < 0 || val >= 16)
+            throw new IndexOutOfBoundsException("Biome coord out of bounds: " + val
                     + " Remember, biome voxels are worth 4 regular blocks. Therefore, chunks are only 4 biome voxels wide.");
-        return x;
+        return val;
     }
 }

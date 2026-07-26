@@ -5,13 +5,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.minecraft.core.*;
+import net.minecraft.core.registries.Registries;
 import org.jetbrains.annotations.Nullable;
 
 import net.betrayd.gamemaps.map_markers.MapMarker;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.Registry;
-import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.biome.Biome;
@@ -23,7 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public class GameMap {
     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
 
-    private final Registry<Biome> biomeRegistry;
+    private final RegistryAccess registryAccess;
     private final Map<SectionPos, GameChunk> chunks = new HashMap<>();
 
     private final Collection<GameMapEntity> entities = new ArrayList<>();
@@ -31,11 +29,11 @@ public class GameMap {
     private final Collection<MapMarker> markers = new ArrayList<>();
 
     private final GameMapMeta meta = new GameMapMeta();
-    
-    public GameMap(Registry<Biome> biomeRegistry) {
-        this.biomeRegistry = biomeRegistry;
+
+    public GameMap(RegistryAccess registryAccess) {
+        this.registryAccess = registryAccess;
     }
-    
+
     public final GameMapMeta getMeta() {
         return meta;
     }
@@ -48,13 +46,12 @@ public class GameMap {
         return chunks;
     }
 
-    @Nullable
-    public GameChunk getChunk(SectionPos pos) {
+    public @Nullable GameChunk getChunk(SectionPos pos) {
         return chunks.get(pos);
     }
     
     public GameChunk getOrCreateChunk(SectionPos pos) {
-        return chunks.computeIfAbsent(pos, p -> new GameChunk(biomeRegistry));
+        return chunks.computeIfAbsent(pos, p -> new GameChunk(registryAccess));
     }
 
     public void putChunk(SectionPos pos, GameChunk chunk) {
@@ -112,19 +109,19 @@ public class GameMap {
     }
 
     public void putBlockEntity(CompoundTag blockEntity) {
-        int x = blockEntity.getInt("x");
-        int y = blockEntity.getInt("y");
-        int z = blockEntity.getInt("z");
+        int x = blockEntity.getInt("x").orElse(0);
+        int y = blockEntity.getInt("y").orElse(0);
+        int z = blockEntity.getInt("z").orElse(0);
 
         putBlockEntity(x, y, z, blockEntity);
     }
 
     public void putBlockEntity(BlockEntity blockEntity) {
-        putBlockEntity(blockEntity.saveWithFullMetadata());
+        putBlockEntity(blockEntity.saveWithFullMetadata(registryAccess));
     }
 
     public void putBlockEntity(BlockPos pos, BlockEntity blockEntity) {
-        putBlockEntity(pos, blockEntity.saveWithFullMetadata());
+        putBlockEntity(pos, blockEntity.saveWithFullMetadata(registryAccess));
     }
 
     public Collection<GameMapEntity> getEntities() {
@@ -151,15 +148,17 @@ public class GameMap {
         this.markers.add(mapMarker);
     }
 
-    public Registry<Biome> getBiomeRegistry() {
-        return biomeRegistry;
+    public RegistryAccess getRegistryAccess() {
+        return registryAccess;
     }
 
+    @SuppressWarnings("OptionalGetWithoutIsPresent") // If any of these are empty, we have a problem
     public Holder<Biome> getBiome(int x, int y, int z) {
         SectionPos chunkPos = getChunkPos(x, y, z);
         GameChunk chunk = getChunk(chunkPos);
 
-        if (chunk == null) return biomeRegistry.getHolderOrThrow(Biomes.THE_VOID);
+        if (chunk == null)
+            return registryAccess.get(Registries.BIOME).get().value().get(Biomes.THE_VOID).get();
         return chunk.getBiome(x & 0xF, y & 0xF, z & 0xF);
     }
 
