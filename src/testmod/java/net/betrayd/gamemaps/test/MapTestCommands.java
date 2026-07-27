@@ -42,7 +42,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.animal.Chicken;
+import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import xyz.nucleoid.fantasy.Fantasy;
@@ -129,8 +129,8 @@ public class MapTestCommands {
 
         SectionPos centerPos = SectionPos.of(context.getSource().getPosition());
 
-        int minY = SectionPos.blockToSectionCoord(context.getSource().getLevel().getMinBuildHeight());
-        int maxY = SectionPos.blockToSectionCoord(context.getSource().getLevel().getMaxBuildHeight());
+        int minY = SectionPos.blockToSectionCoord(context.getSource().getLevel().getMinY());
+        int maxY = SectionPos.blockToSectionCoord(context.getSource().getLevel().getMaxY());
 
         SectionPos minPos = SectionPos.of(centerPos.getX() - radius, minY, centerPos.getZ() - radius);
         SectionPos maxPos = SectionPos.of(centerPos.getX() + radius + 1, maxY,
@@ -268,7 +268,7 @@ public class MapTestCommands {
         Vec3 pos = context.getSource().getPosition();
         Vec2 rot = context.getSource().getRotation();
 
-        ent.teleportTo(world.asLevel(), pos.x(), pos.y(), pos.z(), Collections.emptySet(), rot.y, rot.x);
+        ent.teleportTo(world.asLevel(), pos.x(), pos.y(), pos.z(), Collections.emptySet(), rot.y, rot.x, true);
 
         return 1;
     }

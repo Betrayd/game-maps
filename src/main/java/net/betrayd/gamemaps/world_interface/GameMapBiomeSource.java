@@ -2,6 +2,7 @@ package net.betrayd.gamemaps.world_interface;
 
 import java.util.stream.Stream;
 
+import net.minecraft.core.registries.Registries;
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.serialization.MapCodec;
@@ -48,8 +49,8 @@ public class GameMapBiomeSource extends BiomeSource {
 
     @Override
     protected @NonNull Stream<Holder<Biome>> collectPossibleBiomes() {
-        Registry<Biome> biomes = gameMap.getBiomeRegistry();
-        return gameMap.getBiomeRegistry().entrySet().stream()
+        Registry<Biome> biomes = gameMap.getRegistryAccess().lookupOrThrow(Registries.BIOME);
+        return biomes.entrySet().stream()
                 .map(e -> biomes.wrapAsHolder(e.getValue()));
     }
 

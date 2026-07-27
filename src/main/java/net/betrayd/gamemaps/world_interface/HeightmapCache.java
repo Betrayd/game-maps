@@ -26,6 +26,6 @@ class HeightmapCache {
     }
 
     private static long getKey(int x, int z) {
-        return ChunkPos.asLong(x, z); // This isn't technically a chunk pos, but I don't care
+        return ChunkPos.pack(x, z); // This isn't technically a chunk pos, but I don't care
     }
 }

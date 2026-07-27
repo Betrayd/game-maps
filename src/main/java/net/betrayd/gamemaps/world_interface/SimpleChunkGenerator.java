@@ -2,7 +2,6 @@ package net.betrayd.gamemaps.world_interface;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.betrayd.gamemaps.mixin.AccessorVoidChunkGenerator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -20,7 +19,6 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap.Types;
 import net.minecraft.world.level.levelgen.RandomState;
-import xyz.nucleoid.fantasy.util.VoidChunkGenerator;
 
 import java.util.List;
 
@@ -30,7 +28,7 @@ import java.util.List;
 public abstract class SimpleChunkGenerator extends ChunkGenerator {
 
     public static final MapCodec<VoidChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            Biome.CODEC.stable().fieldOf("biome").forGetter(g -> ((AccessorVoidChunkGenerator) g).gamemaps$getBiome())
+            Biome.CODEC.stable().fieldOf("biome").forGetter(VoidChunkGenerator::getBiome)
     ).apply(instance, instance.stable(VoidChunkGenerator::new)));
 
     public static final NoiseColumn VOID_SAMPLE = new NoiseColumn(0, new BlockState[0]);

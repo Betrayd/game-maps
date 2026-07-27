@@ -58,7 +58,7 @@ public class GameMapPlacer {
             BlockPos globalPos = new BlockPos(globalX, globalY, globalZ);
 
             BlockState state = chunk.getBlockState(pos);
-            BlockEntity ent = BlockEntity.loadStatic(globalPos, state, nbt);
+            BlockEntity ent = BlockEntity.loadStatic(globalPos, state, nbt, world.registryAccess());
 
             world.setBlockEntity(ent);
         });

@@ -1,5 +1,6 @@
 package net.betrayd.gamemaps.world_interface;
 
+import net.minecraft.core.*;
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.logging.LogUtils;
@@ -8,10 +9,6 @@ import net.betrayd.gamemaps.EntityFilter;
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
-import net.minecraft.core.SectionPos;
-import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -51,8 +48,7 @@ public class WorldAlignedMapCapture {
 
         if (origin == null) origin = SectionPos.of(0, 0, 0);
 
-        Registry<Biome> biomeRegistry = world.registryAccess().registryOrThrow(Registries.BIOME);
-        GameMap map = new GameMap(biomeRegistry);
+        GameMap map = new GameMap(world.registryAccess());
 
         for (int x = minPos.getX(); x < maxPos.getX(); x++) {
             for (int z = minPos.getZ(); z < maxPos.getZ(); z++) {
@@ -60,7 +56,7 @@ public class WorldAlignedMapCapture {
                 if (chunk == null)
                     continue;
 
-                GameChunk[] gameChunks = captureChunk(chunk, biomeRegistry);
+                GameChunk[] gameChunks = captureChunk(chunk, world.registryAccess());
                 for (int i = 0; i < gameChunks.length; i++) {
                     if (gameChunks[i] == null)
                         continue;
@@ -108,19 +104,19 @@ public class WorldAlignedMapCapture {
 
     /**
      * Capture a set of game chunks from an MC chunk.
-     * 
-     * @param chunk         Chunk to capture.
-     * @param biomeRegistry Biome registry of the world.
+     *
+     * @param chunk          Chunk to capture.
+     * @param registryAccess Registry access for the world
      * @return An array of all captured game chunks. Use
-     *         {@link ChunkAccess#getSectionYFromSectionIndex(int)} on the supplied chunk to get
-     *         chunk Y from index. Some elements may be null.
+     * {@link ChunkAccess#getSectionYFromSectionIndex(int)} on the supplied chunk to get
+     * chunk Y from index. Some elements may be null.
      */
-    public static GameChunk[] captureChunk(ChunkAccess chunk, Registry<Biome> biomeRegistry) {
+    public static GameChunk[] captureChunk(ChunkAccess chunk, RegistryAccess registryAccess) {
         LevelChunkSection[] sections = chunk.getSections();
         GameChunk[] gameChunks = new GameChunk[sections.length];
 
         for (int i = 0; i < sections.length; i++) {
-            gameChunks[i] = captureChunkSection(sections[i], biomeRegistry);
+            gameChunks[i] = captureChunkSection(sections[i], registryAccess);
         }
 
         for (BlockPos pos : chunk.getBlockEntitiesPos()) {
@@ -135,9 +131,9 @@ public class WorldAlignedMapCapture {
         return gameChunks;
     }
 
-    private static GameChunk captureChunkSection(LevelChunkSection chunkSection, Registry<Biome> biomeRegistry) {
+    private static GameChunk captureChunkSection(LevelChunkSection chunkSection, RegistryAccess registryAccess) {
         return new GameChunk(chunkSection.getStates().copy(),
-                chunkSection.getBiomes().recreate().copy(), biomeRegistry);
+                chunkSection.getBiomes().recreate().copy(), registryAccess);
     }
 
     private static interface TriIntFunction<T> {

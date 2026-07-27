@@ -29,7 +29,7 @@ public class GameMapCapture {
         BlockPos minPos = min(pos1, pos2);
         BlockPos maxPos = max(pos1, pos2);
 
-        GameMap map = new GameMap(world.registryAccess().registryOrThrow(Registries.BIOME));
+        GameMap map = new GameMap(world.registryAccess());
 
         for (int y = minPos.getY(); y <= maxPos.getY(); y++) {
             for (int x = minPos.getX(); x <= maxPos.getX(); x++) {
