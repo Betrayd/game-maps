@@ -11,6 +11,7 @@ import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.TagValueOutput;
@@ -25,49 +26,64 @@ import com.mojang.serialization.JsonOps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
+public record GameMapEntity(CompoundTag nbt) {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("GameMaps/GameMapEntity");
 
     public static GameMapEntity fromEntity(Entity entity) {
-        return fromEntity(entity.position(), entity);
-    }
-
-    public static GameMapEntity fromEntity(Vec3 position, Entity entity) {
         try (var reporter = new ProblemReporter.ScopedCollector(entity.problemPath(), LOGGER)) {
             TagValueOutput output = TagValueOutput.createWithContext(reporter, entity.registryAccess());
             entity.save(output);
             var nbt = output.buildResult();
             // UUIDs don't get stored in game maps
             nbt.remove("UUID");
-            return new GameMapEntity(position, nbt);
+            return new GameMapEntity(nbt);
         }
     }
 
-    public static GameMapEntity fromNbt(CompoundTag nbt) {
-        Vec3 pos = nbt.getList("Pos").map(GameMapEntity::listToPos).orElse(Vec3.ZERO);
-
-        return new GameMapEntity(pos, nbt);
+    public static GameMapEntity fromEntity(Vec3 pos, Entity entity) {
+        GameMapEntity ent = fromEntity(entity);
+        ent.nbt().put("Pos", posToList(pos));
+        return ent;
     }
 
-    public GameMapEntity withPos(Vec3 pos) {
-        return new GameMapEntity(pos, this.nbt);
+    public static GameMapEntity fromNbt(CompoundTag nbt) {
+        return new GameMapEntity(nbt);
+    }
+
+
+    @SuppressWarnings("OptionalIsPresent") // Makes it impossible to fucking read
+    public Vec3 pos() {
+        var poseOpt = nbt.getList("Pos");
+        return poseOpt.isPresent() ? listToPos(poseOpt.get()) : Vec3.ZERO;
     }
 
     /**
      * Turn this MapEntity into a set of real entities (parent + children).
      * 
      * @param world    World to put in.
+     * @param offset   The offset to use creating the entity
      * @param consumer Entity consumer.
      */
-    public void createEntities(Level world, Consumer<Entity> consumer) {
+    public void createEntities(Level world, Vec3 offset, Consumer<Entity> consumer) {
         try (var reporter = new ProblemReporter.ScopedCollector(LOGGER)) {
             ValueInput input = TagValueInput.create(reporter, world.registryAccess(), createEntityNbt());
             EntityType.loadEntityRecursive(input, world, EntitySpawnReason.LOAD, ent -> {
+                ent.setPos(ent.position().add(offset));
                 consumer.accept(ent);
                 return ent;
             });
         }
+    }
+
+    /**
+     * Turn this MapEntity into a set of real entities (parent + children).
+     *
+     * @param world    World to put in.
+     * @param consumer Entity consumer.
+     */
+    public void createEntities(Level world, Consumer<Entity> consumer) {
+        createEntities(world, Vec3.ZERO, consumer);
     }
 
     /**
@@ -76,18 +92,7 @@ public record GameMapEntity(Vec3 pos, CompoundTag nbt) {
      */
     public CompoundTag createEntityNbt() {
         CompoundTag nbt = this.nbt.copy();
-
-        nbt.put("Pos", posToList(pos));
-
         nbt.remove("UUID");
-
-        // AbstractDecorationEntity has special position handling with an attachment position.
-        if (nbt.contains("block_pos")) {
-            BlockPos blockPos = BlockPos.containing(pos);
-            IntArrayTag tag = new IntArrayTag(new int[] {blockPos.getX(), blockPos.getY(), blockPos.getZ()});
-            nbt.put("block_pos", tag);
-        }
-
         return nbt;
     }
 

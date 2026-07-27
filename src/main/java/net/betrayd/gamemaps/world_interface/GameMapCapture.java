@@ -49,13 +49,11 @@ public class GameMapCapture {
         if (world instanceof ServerLevel serverWorld) {
             for (Entity ent : serverWorld.getAllEntities()) {
                 if (boxContains(minPos, maxPos, ent.blockPosition())) {
-                    if (entityFilter != null)
-                        ent = entityFilter.apply(ent, map);
-                    
-                    if (ent == null)
+                    var filtered = entityFilter != null ? entityFilter.apply(ent, map) : ent;
+                    if (filtered == null)
                         continue;
 
-                    map.addEntity(GameMapEntity.fromEntity(ent.position().subtract(Vec3.atLowerCornerOf(pos1)), ent));
+                    map.addEntity(GameMapEntity.fromEntity(ent.position().subtract(Vec3.atLowerCornerOf(pos1)), filtered));
                 }
             }
         }

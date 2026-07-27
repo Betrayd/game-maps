@@ -32,8 +32,8 @@ public class GameMapPlacer {
         }
 
         for (GameMapEntity ent : gameMap.getEntities()) {
-            Vec3 pos = ent.pos().add(offset.getX(), offset.getY(), offset.getZ());
-            ent.withPos(pos).createEntities(world, world::addFreshEntity);
+            Vec3 pos = new Vec3(offset.getX(), offset.getY(), offset.getZ());
+            ent.createEntities(world, pos, world::addFreshEntity);
         }
     }
 
