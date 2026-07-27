@@ -135,7 +135,6 @@ public class GameMap {
 
     public GameMapEntity addEntity(Entity entity) {
         GameMapEntity ent = GameMapEntity.fromEntity(entity);
-        if (ent == null) return null;
         entities.add(ent);
         return ent;
     }
@@ -158,7 +157,7 @@ public class GameMap {
         GameChunk chunk = getChunk(chunkPos);
 
         if (chunk == null)
-            return registryAccess.get(Registries.BIOME).get().value().get(Biomes.THE_VOID).get();
+            return registryAccess.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.THE_VOID);
         return chunk.getBiome(x & 0xF, y & 0xF, z & 0xF);
     }
 

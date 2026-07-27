@@ -17,6 +17,5 @@ public interface EntityFilter {
      * @return The filtered entity. <code>null</code> if the entity should be
      *         removed.
      */
-    @Nullable
-    public Entity apply(Entity entity, GameMap customNbt);
+    @Nullable Entity apply(Entity entity, GameMap customNbt);
 }

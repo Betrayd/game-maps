@@ -32,17 +32,25 @@ import net.minecraft.world.level.levelgen.blending.Blender;
  */
 public class GameMapChunkGenerator extends SimpleChunkGenerator {
 
+    /** The game map being generated into world chunks. */
     private final GameMap gameMap;
 
+    /** Minimum X bound of the game map, in world-space block coordinates. */
     private final int minX;
+    /** Maximum X bound of the game map, in world-space block coordinates. */
     private final int maxX;
 
+    /** Minimum Y bound of the game map, in world-space block coordinates. */
     private final int minY;
+    /** Maximum Y bound of the game map, in world-space block coordinates. */
     private final int maxY;
 
+    /** Minimum Z bound of the game map, in world-space block coordinates. */
     private final int minZ;
+    /** Maximum Z bound of the game map, in world-space block coordinates. */
     private final int maxZ;
 
+    /** Caches computed heightmap values, keyed by block X/Z and heightmap type. */
     private final HeightmapCache heightmapCache = new HeightmapCache();
 
     public GameMapChunkGenerator(GameMap gameMap) {
@@ -178,7 +186,7 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
 
         BlockState[] column = new BlockState[maxY - minY + 1];
         for (int y = maxY; y >= minY; y--) {
-            column[y] = gameMap.getBlock(x, y, z);
+            column[y - minY] = gameMap.getBlock(x, y, z);
         }
 
         return new NoiseColumn(minY, column);
