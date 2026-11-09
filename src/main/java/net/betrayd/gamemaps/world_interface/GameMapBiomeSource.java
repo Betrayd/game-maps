@@ -3,6 +3,7 @@ package net.betrayd.gamemaps.world_interface;
 import java.util.stream.Stream;
 
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.biome.BiomeResolver;
 import org.jetbrains.annotations.Nullable;
 
 import com.mojang.serialization.MapCodec;
@@ -21,7 +22,7 @@ import org.jspecify.annotations.NonNull;
  * A <code>BiomeSource</code> based on the biomes from a game map, mainly for
  * use in {@link GameMapChunkGenerator}.
  */
-public class GameMapBiomeSource extends BiomeSource {
+public class GameMapBiomeSource extends BiomeSource implements BiomeResolver {
 
     /**
      * We never need to deserialize this biome source, so a bullshit codec provides
@@ -55,7 +56,12 @@ public class GameMapBiomeSource extends BiomeSource {
     }
 
     @Override
-    public @NonNull Holder<Biome> getNoiseBiome(int x, int y, int z, Sampler var4) {
+    public @NonNull BiomeResolver createResolver(Sampler sampler) {
+        return this;
+    }
+
+    @Override
+    public @NonNull Holder<Biome> getNoiseBiome(int x, int y, int z) {
         int blockX = QuartPos.toBlock(x);
         int blockY = QuartPos.toBlock(y);
         int blockZ = QuartPos.toBlock(z);

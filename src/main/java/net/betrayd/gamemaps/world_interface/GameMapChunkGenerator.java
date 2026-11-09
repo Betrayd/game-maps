@@ -1,14 +1,10 @@
 package net.betrayd.gamemaps.world_interface;
 
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.stream.Collectors;
-
 import net.betrayd.gamemaps.GameChunk;
 import net.betrayd.gamemaps.GameMap;
 import net.betrayd.gamemaps.GameMapEntity;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.util.Util;
@@ -16,6 +12,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
@@ -25,6 +22,12 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.Heightmap.Types;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import org.jspecify.annotations.Nullable;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 /**
  * Generates chunks based on a game map. This generator assumes the game map
@@ -71,8 +74,8 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
         return gameMap;
     }
 
-//    @Override
-    public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState randomState, StructureManager structureManager, ChunkAccess chunk) {
+    @Override
+    public CompletableFuture<ChunkAccess> buildTerrain(ChunkAccess chunk, Blender blender, RandomState randomState, StructureManager structureManager, BiomeManager biomeManager, @Nullable WorldGenRegion carverBiomeRegion, Set<Holder<Biome>> possibleBiomes) {
         ChunkPos chunkPos = chunk.getPos();
         
         Map<SectionPos, GameChunk> gameChunks = gameMap.getChunks().entrySet().stream().filter(e -> {
@@ -139,10 +142,6 @@ public class GameMapChunkGenerator extends SimpleChunkGenerator {
         });
     }
 
-    @Override
-    public void applyCarvers(WorldGenRegion region, long seed, RandomState randomState, BiomeManager biomeManager, StructureManager structureManager, ChunkAccess chunk) {
-
-    }
 
     @Override
     public void spawnOriginalMobs(WorldGenRegion region) {
