@@ -35,8 +35,6 @@ public record GameMapEntity(CompoundTag nbt) {
             TagValueOutput output = TagValueOutput.createWithContext(reporter, entity.registryAccess());
             entity.save(output);
             var nbt = output.buildResult();
-            // UUIDs don't get stored in game maps
-            nbt.remove("UUID");
             return new GameMapEntity(nbt);
         }
     }
@@ -91,9 +89,7 @@ public record GameMapEntity(CompoundTag nbt) {
      * @return World-loadable entity NBT.
      */
     public CompoundTag createEntityNbt() {
-        CompoundTag nbt = this.nbt.copy();
-        nbt.remove("UUID");
-        return nbt;
+        return this.nbt.copy();
     }
 
     public Identifier getId() {
